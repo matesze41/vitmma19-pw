@@ -1,25 +1,22 @@
-# Demo Dockerfile: minimal setup for the course template.
-# IMPORTANT: This Dockerfile is a simple example for demonstration purposes
-# and must be adapted to your project topic (dependencies, system packages,
-# runtime, GPU support, volumes, entrypoint behaviour etc.).
+# Start from NVIDIA’s CUDA 12.2 runtime (Ubuntu 22.04 base)
+FROM nvidia/cuda:12.2.0-runtime-ubuntu22.04
 
-FROM python:3.9-slim
+ENV DEBIAN_FRONTEND=noninteractive
 
-WORKDIR /app
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        wget \
+        bzip2 \
+        ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
 
-# Install dependencies
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+ARG MINICONDA_VERSION=latest
+RUN wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-${MINICONDA_VERSION}-Linux-x86_64.sh -O /tmp/miniconda.sh \
+    && bash /tmp/miniconda.sh -b -p /opt/conda \
+    && rm /tmp/miniconda.sh \
+    && /opt/conda/bin/conda clean -afy
 
-# Copy source code and notebooks
-COPY src/ src/
-COPY notebook/ notebook/
-COPY run.sh run.sh
+ENV PATH="/opt/conda/bin:${PATH}"
+SHELL ["/bin/bash", "-c"]
+WORKDIR /work
 
-# Create a directory for data (to be mounted)
-RUN mkdir -p /app/data
-RUN chmod +x /app/run.sh || true
-
-# Set the entrypoint to run the training script by default
-# You can override this with `docker run ... python src/04-inference.py` etc.
-CMD ["bash", "/app/run.sh"]
+CMD ["sleep", "infinity"]
