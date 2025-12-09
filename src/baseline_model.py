@@ -90,15 +90,15 @@ class BaselineModel:
         Returns:
             Tuple of (is_bullish, consolidation_df)
         """
-        open_price = df['Open'].iloc[0]
-        close_price = df['Close'].iloc[-1]
+        open_price = df['open'].iloc[0]
+        close_price = df['close'].iloc[-1]
         is_bullish = close_price > open_price
         
         if is_bullish:
-            peak_idx = df['High'].idxmax()
+            peak_idx = df['high'].idxmax()
             start_idx = df.index.get_loc(peak_idx)
         else:
-            trough_idx = df['Low'].idxmin()
+            trough_idx = df['low'].idxmin()
             start_idx = df.index.get_loc(trough_idx)
         
         # If too short, use the entire segment
@@ -139,7 +139,7 @@ class BaselineModel:
         Predict the flag pattern type for a single OHLC segment.
         
         Args:
-            df: DataFrame with columns ['Open', 'High', 'Low', 'Close'].
+            df: DataFrame with columns ['open', 'high', 'low', 'close'].
                 The index can be datetime or integer.
                 
         Returns:
@@ -148,7 +148,7 @@ class BaselineModel:
         Raises:
             ValueError: If required columns are missing or data is too short.
         """
-        required_cols = ['Open', 'High', 'Low', 'Close']
+        required_cols = ['open', 'high', 'low', 'close']
         missing = [c for c in required_cols if c not in df.columns]
         if missing:
             raise ValueError(f"Missing required columns: {missing}")
@@ -161,7 +161,7 @@ class BaselineModel:
         
         # Compute moving average on consolidation
         consolidation = consolidation.copy()
-        consolidation['MA'] = consolidation['Close'].rolling(
+        consolidation['MA'] = consolidation['close'].rolling(
             window=self.ma_window, min_periods=1
         ).mean()
         
@@ -188,7 +188,7 @@ class BaselineModel:
                 - 'slope': The calculated slope value
                 - 'consolidation_length': Number of bars in consolidation phase
         """
-        required_cols = ['Open', 'High', 'Low', 'Close']
+        required_cols = ['open', 'high', 'low', 'close']
         missing = [c for c in required_cols if c not in df.columns]
         if missing:
             raise ValueError(f"Missing required columns: {missing}")
@@ -199,7 +199,7 @@ class BaselineModel:
         is_bullish, consolidation = self._extract_consolidation(df)
         
         consolidation = consolidation.copy()
-        consolidation['MA'] = consolidation['Close'].rolling(
+        consolidation['MA'] = consolidation['close'].rolling(
             window=self.ma_window, min_periods=1
         ).mean()
         
@@ -289,7 +289,7 @@ def predict_from_segments_csv(
     The CSV is expected to have columns:
         - segment_id: integer ID grouping rows into segments
         - label: ground truth label (optional, for comparison)
-        - Open, High, Low, Close: OHLC price columns
+        - open, high, low, close: OHLC price columns
         
     Args:
         csv_path: Path to the combined segments CSV file.
@@ -302,7 +302,10 @@ def predict_from_segments_csv(
     """
     df = pd.read_csv(csv_path)
     
-    required_cols = ['Open', 'High', 'Low', 'Close']
+    # Normalize column names to lowercase
+    df.columns = df.columns.str.lower()
+    
+    required_cols = ['open', 'high', 'low', 'close']
     missing = [c for c in required_cols if c not in df.columns]
     if missing:
         raise ValueError(f"Missing required OHLC columns: {missing}")
