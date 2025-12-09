@@ -81,8 +81,8 @@ class BaselineModel:
         """
         Extract the consolidation phase from an OHLC segment.
         
-        For bullish patterns: consolidation starts after the local maximum (High)
-        For bearish patterns: consolidation starts after the local minimum (Low)
+        For bullish patterns: consolidation starts after the local maximum (high)
+        For bearish patterns: consolidation starts after the local minimum (low)
         
         Args:
             df: DataFrame with OHLC columns.
@@ -90,15 +90,15 @@ class BaselineModel:
         Returns:
             Tuple of (is_bullish, consolidation_df)
         """
-        open_price = df['Open'].iloc[0]
-        close_price = df['Close'].iloc[-1]
+        open_price = df['open'].iloc[0]
+        close_price = df['close'].iloc[-1]
         is_bullish = close_price > open_price
         
         if is_bullish:
-            peak_idx = df['High'].idxmax()
+            peak_idx = df['high'].idxmax()
             start_idx = df.index.get_loc(peak_idx)
         else:
-            trough_idx = df['Low'].idxmin()
+            trough_idx = df['low'].idxmin()
             start_idx = df.index.get_loc(trough_idx)
         
         # If too short, use the entire segment
@@ -139,7 +139,7 @@ class BaselineModel:
         Predict the flag pattern type for a single OHLC segment.
         
         Args:
-            df: DataFrame with columns ['Open', 'High', 'Low', 'Close'].
+            df: DataFrame with columns ['open', 'high', 'low', 'close'].
                 The index can be datetime or integer.
                 
         Returns:
@@ -148,7 +148,7 @@ class BaselineModel:
         Raises:
             ValueError: If required columns are missing or data is too short.
         """
-        required_cols = ['Open', 'High', 'Low', 'Close']
+        required_cols = ['open', 'high', 'low', 'close']
         missing = [c for c in required_cols if c not in df.columns]
         if missing:
             raise ValueError(f"Missing required columns: {missing}")
@@ -161,13 +161,13 @@ class BaselineModel:
         
         # Compute moving average on consolidation
         consolidation = consolidation.copy()
-        consolidation['MA'] = consolidation['Close'].rolling(
+        consolidation['ma'] = consolidation['close'].rolling(
             window=self.ma_window, min_periods=1
         ).mean()
         
         # Calculate slope
         x = np.arange(len(consolidation))
-        y = consolidation['MA'].values
+        y = consolidation['ma'].values
         slope = self._linear_slope(x, y)
         
         # Classify
@@ -188,7 +188,7 @@ class BaselineModel:
                 - 'slope': The calculated slope value
                 - 'consolidation_length': Number of bars in consolidation phase
         """
-        required_cols = ['Open', 'High', 'Low', 'Close']
+        required_cols = ['open', 'high', 'low', 'close']
         missing = [c for c in required_cols if c not in df.columns]
         if missing:
             raise ValueError(f"Missing required columns: {missing}")
@@ -199,12 +199,12 @@ class BaselineModel:
         is_bullish, consolidation = self._extract_consolidation(df)
         
         consolidation = consolidation.copy()
-        consolidation['MA'] = consolidation['Close'].rolling(
+        consolidation['ma'] = consolidation['close'].rolling(
             window=self.ma_window, min_periods=1
         ).mean()
         
         x = np.arange(len(consolidation))
-        y = consolidation['MA'].values
+        y = consolidation['ma'].values
         slope = self._linear_slope(x, y)
         
         label = self._classify_pattern(is_bullish, slope)
@@ -235,16 +235,17 @@ def load_ohlc_csv(csv_path: str) -> pd.DataFrame:
     Load an OHLC CSV file into a DataFrame.
     
     Automatically detects the datetime column and sets it as index.
+    Converts all column names to lowercase.
     
     Args:
         csv_path: Path to the CSV file.
         
     Returns:
-        DataFrame with datetime index and OHLC columns.
+        DataFrame with datetime index and lowercase OHLC columns.
     """
     df = pd.read_csv(csv_path)
     
-    # Try to find the datetime column
+    # Try to find the datetime column before normalizing
     datetime_cols = ["Date", "date", "timestamp", "Timestamp", "Datetime", "datetime"]
     dt_col = None
     for col in datetime_cols:
@@ -255,6 +256,9 @@ def load_ohlc_csv(csv_path: str) -> pd.DataFrame:
     if dt_col is not None:
         df[dt_col] = pd.to_datetime(df[dt_col])
         df = df.set_index(dt_col)
+    
+    # Normalize all column names to lowercase
+    df.columns = df.columns.str.lower()
     
     return df
 
@@ -289,7 +293,7 @@ def predict_from_segments_csv(
     The CSV is expected to have columns:
         - segment_id: integer ID grouping rows into segments
         - label: ground truth label (optional, for comparison)
-        - Open, High, Low, Close: OHLC price columns
+        - open, high, low, close: OHLC price columns (lowercase)
         
     Args:
         csv_path: Path to the combined segments CSV file.
@@ -302,10 +306,16 @@ def predict_from_segments_csv(
     """
     df = pd.read_csv(csv_path)
     
-    required_cols = ['Open', 'High', 'Low', 'Close']
+    # Normalize column names to lowercase
+    df.columns = df.columns.str.lower()
+    
+    required_cols = ['open', 'high', 'low', 'close']
     missing = [c for c in required_cols if c not in df.columns]
     if missing:
         raise ValueError(f"Missing required OHLC columns: {missing}")
+    
+    segment_id_col = segment_id_col.lower()
+    label_col = label_col.lower()
     
     if segment_id_col not in df.columns:
         raise ValueError(f"Missing segment ID column: {segment_id_col}")
