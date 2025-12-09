@@ -1,0 +1,16 @@
+name: workenv
+channels:
+  - defaults
+dependencies:
+  - python=3.13
+  - numpy
+  - pandas
+  - matplotlib
+  - seaborn
+  - h5py
+  - jupyter
+  - ipykernel
+  - scikit-learn
+  - pip
+  - pip:
+    - torch --index-url https://download.pytorch.org/whl/cu124
