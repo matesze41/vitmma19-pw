@@ -40,7 +40,7 @@ class BaselineModel:
             otherwise           → Bearish Normal
     """
     
-    def __init__(self, slope_threshold: float = 0.02, ma_window: int = 3):
+    def __init__(self, slope_threshold: float = 0.0002, ma_window: int = 3):
         """
         Initialize the baseline model.
         
@@ -260,7 +260,7 @@ def load_ohlc_csv(csv_path: str) -> pd.DataFrame:
 
 
 # Convenience function for direct prediction from CSV
-def predict_from_csv(csv_path: str, slope_threshold: float = 0.02) -> str:
+def predict_from_csv(csv_path: str, slope_threshold: float = 0.0002) -> str:
     """
     Load a CSV file and predict the flag pattern type.
     
@@ -278,7 +278,7 @@ def predict_from_csv(csv_path: str, slope_threshold: float = 0.02) -> str:
 
 def predict_from_segments_csv(
     csv_path: str,
-    slope_threshold: float = 0.02,
+    slope_threshold: float = 0.0002,
     segment_id_col: str = "segment_id",
     label_col: str = "label"
 ) -> pd.DataFrame:
@@ -343,7 +343,7 @@ def predict_from_segments_csv(
     return pd.DataFrame(results)
 
 
-def evaluate_on_segments_csv(csv_path: str, slope_threshold: float = 0.02) -> Dict[str, Any]:
+def evaluate_on_segments_csv(csv_path: str, slope_threshold: float = 0.0002) -> Dict[str, Any]:
     """
     Evaluate the baseline model on a segments CSV and return metrics.
     
