@@ -12,11 +12,12 @@ from typing import Tuple
 
 def setup_logger(name='pipeline', log_file='../log/run.log'):
     """
-    Sets up a logger that outputs to a log file.
+    Sets up a logger that outputs to stdout only.
+    The log file is created by redirecting stdout in the shell/Docker.
     
     Args:
         name: Logger name (default: 'pipeline')
-        log_file: Path to log file relative to project root (default: 'log/run.log')
+        log_file: Path to log file (unused, kept for compatibility)
     
     Returns:
         Configured logger instance
@@ -33,13 +34,10 @@ def setup_logger(name='pipeline', log_file='../log/run.log'):
     # Create formatter
     formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
 
-    # File handler
-    log_dir = os.path.dirname(log_file)
-    if log_dir and not os.path.exists(log_dir):
-        os.makedirs(log_dir, exist_ok=True)
-    file_handler = logging.FileHandler(log_file, mode='a')
-    file_handler.setFormatter(formatter)
-    logger.addHandler(file_handler)
+    # Console handler (stdout) - Docker/shell redirection captures this
+    console_handler = logging.StreamHandler(sys.stdout)
+    console_handler.setFormatter(formatter)
+    logger.addHandler(console_handler)
 
     return logger
 
