@@ -1,3 +1,6 @@
 /data
 DataManip/.env
 /DataManip
+/notebook/lightning_logs
+/notebook/wandb
+/notebook/__pycache__
