@@ -28,11 +28,18 @@ import torch.nn.functional as F
 from sklearn.metrics import accuracy_score, f1_score, classification_report
 
 import config
-from utils import setup_logger, ensure_dir, minmax_norm, interpolate_series
+from utils import setup_logger, ensure_dir
 
+
+# Import preprocessing function from data preprocessing script
+import importlib.util
+spec_preproc = importlib.util.spec_from_file_location("preprocessing", os.path.join(os.path.dirname(__file__), "01-data-preprocessing.py"))
+preproc_module = importlib.util.module_from_spec(spec_preproc)
+spec_preproc.loader.exec_module(preproc_module)
+
+process_segment_raw = preproc_module.process_segment
 
 # Import model from training script
-import importlib.util
 spec = importlib.util.spec_from_file_location("training", os.path.join(os.path.dirname(__file__), "02-training.py"))
 training_module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(training_module)
@@ -56,6 +63,7 @@ class InferenceDataset(Dataset):
 def preprocess_segment(df_segment, feature_cols, sequence_length, window_size=5):
     """
     Preprocess a single segment: normalize and engineer features.
+    Uses the same preprocessing logic as 01-data-preprocessing.py
     
     Args:
         df_segment: DataFrame with columns [timestamp, open, high, low, close, volume]
@@ -68,36 +76,24 @@ def preprocess_segment(df_segment, feature_cols, sequence_length, window_size=5)
     """
     df = df_segment.copy()
     
-    # Sort by timestamp
+    # Add seq_index for compatibility with process_segment_raw
+    df['seq_index'] = np.arange(len(df))
+    
+    # Add dummy segment_id, label, csv_file for process_segment_raw
+    df['segment_id'] = 0
+    df['label'] = 'unknown'
+    df['csv_file'] = 'inference'
+    
+    # Sort by timestamp if present
     if 'timestamp' in df.columns:
         df = df.sort_values('timestamp').reset_index(drop=True)
+        df['seq_index'] = np.arange(len(df))
     
-    # Normalize OHLC
-    for col in ['open', 'high', 'low', 'close']:
-        if col in df.columns:
-            df[f'{col}_norm'] = minmax_norm(df[col].values)
+    # Use the same preprocessing pipeline as training
+    processed_df = process_segment_raw(df, sequence_length, window_size, config.EPS, has_seq_index=True)
     
-    # Engineer features
-    if 'close_norm' in df.columns and 'high_norm' in df.columns and 'low_norm' in df.columns:
-        df['vol_close'] = df['close_norm'].rolling(window=window_size, min_periods=1).std()
-        df['vol_high_low'] = (df['high_norm'] - df['low_norm']).rolling(window=window_size, min_periods=1).std()
-        df['compression_ratio'] = (df['high_norm'] - df['low_norm']).rolling(window=window_size, min_periods=1).mean()
-        df['trend'] = df['close_norm'].rolling(window=window_size, min_periods=1).apply(
-            lambda x: (x.iloc[-1] - x.iloc[0]) if len(x) > 1 else 0, raw=False
-        )
-    
-    # Fill NaN values
-    df = df.fillna(0.0)
-    
-    # Extract features
-    feat = df[feature_cols].to_numpy(dtype=np.float32)
-    
-    # Resample to target sequence length
-    if feat.shape[0] != sequence_length:
-        resampled = np.zeros((sequence_length, feat.shape[1]), dtype=np.float32)
-        for i in range(feat.shape[1]):
-            resampled[:, i] = interpolate_series(feat[:, i], sequence_length)
-        feat = resampled
+    # Extract just the feature columns
+    feat = processed_df[feature_cols].to_numpy(dtype=np.float32)
     
     return feat
 
@@ -136,7 +132,8 @@ def load_model_and_metadata(logger):
         input_dim=input_dim,
         num_classes=num_classes,
         class_weights=None,
-        map_location=device
+        map_location=device,
+        weights_only=False
     )
     model.eval()
     model.freeze()
@@ -194,21 +191,15 @@ def main():
                        help='Input data does not have labels')
     args = parser.parse_args()
     
-    # Setup logger
-    logger = setup_logger(__name__, config.LOG_FILE)
+    # Setup global pipeline logger
+    logger = setup_logger("pipeline", config.LOG_FILE)
     
-    logger.info("\n" + "=" * 80)
-    logger.info("INFERENCE PIPELINE")
+    logger.info("[INFERENCE PIPELINE]")
     logger.info(f"Started at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    logger.info("=" * 80)
     logger.info(f"Input file: {args.input}")
     logger.info(f"Output file: {args.output}")
     logger.info(f"Has labels: {not args.no_labels}")
-    
-    # Load model and metadata
-    logger.info("\n" + "=" * 80)
-    logger.info("LOADING MODEL")
-    logger.info("=" * 80)
+    logger.info("[LOADING MODEL]")
     
     model, metadata, device = load_model_and_metadata(logger)
     
@@ -218,50 +209,91 @@ def main():
     num_classes = metadata['num_classes']
     
     # Load input data
-    logger.info("\n" + "=" * 80)
-    logger.info("LOADING INPUT DATA")
-    logger.info("=" * 80)
+    logger.info("[LOADING INPUT DATA]")
     
     df = pd.read_csv(args.input)
     logger.info(f"Loaded {len(df)} rows from {args.input}")
     
-    # Check required columns
-    required_cols = ['open', 'high', 'low', 'close']
-    missing_cols = [col for col in required_cols if col not in df.columns]
-    if missing_cols:
-        raise ValueError(f"Missing required columns: {missing_cols}")
-    
-    # Process segments
-    logger.info("\n" + "=" * 80)
-    logger.info("PREPROCESSING SEGMENTS")
-    logger.info("=" * 80)
-    
-    if 'segment_id' in df.columns:
-        # Data is already segmented
-        df = df.sort_values(['segment_id', 'seq_pos'] if 'seq_pos' in df.columns else 'segment_id')
-        segments = []
-        segment_ids = []
-        true_labels = [] if not args.no_labels and 'label' in df.columns else None
-        
-        for seg_id, g in df.groupby('segment_id', sort=True):
-            if 'seq_pos' in g.columns:
-                g = g.sort_values('seq_pos')
-            
-            feat = preprocess_segment(g, feature_cols, config.SEQUENCE_LENGTH, config.WINDOW_SIZE)
-            segments.append(feat)
-            segment_ids.append(seg_id)
-            
-            if true_labels is not None:
-                true_labels.append(g['label'].iloc[0])
-        
-        logger.info(f"Processed {len(segments)} segments")
+    # Check if data is already preprocessed (has feature columns) or needs preprocessing
+    if all(col in df.columns for col in feature_cols):
+        logger.info("Detected preprocessed data (features already present)")
+        data_is_preprocessed = True
     else:
-        # Treat entire dataframe as one segment
-        feat = preprocess_segment(df, feature_cols, config.SEQUENCE_LENGTH, config.WINDOW_SIZE)
-        segments = [feat]
-        segment_ids = [0]
-        true_labels = None
-        logger.info("Processed 1 segment (entire input)")
+        logger.info("Detected raw data (will preprocess)")
+        data_is_preprocessed = False
+        # Check required columns for raw data
+        required_cols = ['open', 'high', 'low', 'close']
+        missing_cols = [col for col in required_cols if col not in df.columns]
+        if missing_cols:
+            raise ValueError(f"Missing required columns: {missing_cols}")
+    
+    logger.info("PREPROCESSING SEGMENTS")
+    
+    if data_is_preprocessed:
+        # Data already has features, just extract them
+        if 'segment_id' in df.columns:
+            df = df.sort_values(['segment_id', 'seq_pos'] if 'seq_pos' in df.columns else 'segment_id')
+            segments = []
+            segment_ids = []
+            true_labels = [] if not args.no_labels and 'label' in df.columns else None
+            
+            for seg_id, g in df.groupby('segment_id', sort=True):
+                if 'seq_pos' in g.columns:
+                    g = g.sort_values('seq_pos')
+                
+                feat = g[feature_cols].to_numpy(dtype=np.float32)
+                
+                # Ensure correct sequence length
+                if feat.shape[0] < config.SEQUENCE_LENGTH:
+                    pad = np.repeat(feat[-1:, :], config.SEQUENCE_LENGTH - feat.shape[0], axis=0)
+                    feat = np.concatenate([feat, pad], axis=0)
+                elif feat.shape[0] > config.SEQUENCE_LENGTH:
+                    feat = feat[:config.SEQUENCE_LENGTH, :]
+                
+                segments.append(feat)
+                segment_ids.append(seg_id)
+                
+                if true_labels is not None:
+                    true_labels.append(g['label'].iloc[0])
+            
+            logger.info(f"Processed {len(segments)} preprocessed segments")
+        else:
+            # Treat as single segment
+            feat = df[feature_cols].to_numpy(dtype=np.float32)
+            if feat.shape[0] != config.SEQUENCE_LENGTH:
+                logger.warning(f"Segment has {feat.shape[0]} timesteps, expected {config.SEQUENCE_LENGTH}")
+            segments = [feat[:config.SEQUENCE_LENGTH]]
+            segment_ids = [0]
+            true_labels = None
+            logger.info("Processed 1 preprocessed segment")
+    else:
+        # Raw data - need to preprocess
+        if 'segment_id' in df.columns:
+            # Data is already segmented
+            df = df.sort_values(['segment_id', 'seq_pos'] if 'seq_pos' in df.columns else 'segment_id')
+            segments = []
+            segment_ids = []
+            true_labels = [] if not args.no_labels and 'label' in df.columns else None
+            
+            for seg_id, g in df.groupby('segment_id', sort=True):
+                if 'seq_pos' in g.columns:
+                    g = g.sort_values('seq_pos')
+                
+                feat = preprocess_segment(g, feature_cols, config.SEQUENCE_LENGTH, config.WINDOW_SIZE)
+                segments.append(feat)
+                segment_ids.append(seg_id)
+                
+                if true_labels is not None:
+                    true_labels.append(g['label'].iloc[0])
+            
+            logger.info(f"Processed {len(segments)} segments")
+        else:
+            # Treat entire dataframe as one segment
+            feat = preprocess_segment(df, feature_cols, config.SEQUENCE_LENGTH, config.WINDOW_SIZE)
+            segments = [feat]
+            segment_ids = [0]
+            true_labels = None
+            logger.info("Processed 1 segment (entire input)")
     
     # Create dataset and loader
     X = np.stack(segments, axis=0)
@@ -269,9 +301,7 @@ def main():
     loader = DataLoader(dataset, batch_size=config.BATCH_SIZE, shuffle=False)
     
     # Generate predictions
-    logger.info("\n" + "=" * 80)
     logger.info("GENERATING PREDICTIONS")
-    logger.info("=" * 80)
     
     pred_labels, probabilities = predict_on_loader(loader, model, device, idx_to_label)
     
@@ -300,14 +330,10 @@ def main():
         acc = accuracy_score(y_true_idx, y_pred_idx)
         f1 = f1_score(y_true_idx, y_pred_idx, average='macro')
         
-        logger.info("\n" + "=" * 80)
-        logger.info("EVALUATION METRICS")
-        logger.info("=" * 80)
+        logger.info("[EVALUATION METRICS]")
         logger.info(f"Accuracy:         {acc:.4f}")
         logger.info(f"F1 Score (macro): {f1:.4f}")
-        
-        # Log classification report
-        logger.info("\nClassification Report:")
+        logger.info("[CLASSIFICATION REPORT]")
         report = classification_report(true_labels, pred_labels,
                                        target_names=[str(lbl) for lbl in sorted(set(true_labels))])
         for line in report.split('\n'):
@@ -315,23 +341,18 @@ def main():
                 logger.info(f"  {line}")
     
     # Save results
-    ensure_dir(os.path.dirname(args.output))
+    output_dir = os.path.dirname(args.output)
+    if output_dir:  # Only create directory if there's a directory component
+        ensure_dir(output_dir)
     results.to_csv(args.output, index=False)
-    logger.info(f"\nSaved predictions to: {args.output}")
-    
-    # Log prediction distribution
-    logger.info("\n" + "=" * 80)
-    logger.info("PREDICTION DISTRIBUTION")
-    logger.info("=" * 80)
+    logger.info(f"Saved predictions to: {args.output}")
+    logger.info("[PREDICTION DISTRIBUTION]")
     pred_dist = pd.Series(pred_labels).value_counts()
     for label, count in pred_dist.items():
         pct = count / len(pred_labels) * 100
         logger.info(f"  {label}: {count} ({pct:.1f}%)")
-    
-    logger.info("\n" + "=" * 80)
-    logger.info("INFERENCE COMPLETED SUCCESSFULLY")
+    logger.info("[INFERENCE COMPLETED SUCCESSFULLY]")
     logger.info(f"Completed at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    logger.info("=" * 80)
 
 
 if __name__ == "__main__":

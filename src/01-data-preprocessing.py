@@ -149,7 +149,8 @@ def extract_segments(json_entry: Dict[str, Any], csv_directory: str, logger) -> 
     return segments
 
 
-def process_segment(g: pd.DataFrame, sequence_length: int = 24, window: int = 5, eps: float = 1e-9) -> pd.DataFrame:
+def process_segment(g: pd.DataFrame, sequence_length: int = 24, window: int = 5, eps: float = 1e-9, 
+                   has_seq_index: bool = True) -> pd.DataFrame:
     """
     Process a single segment: normalize, resample, and engineer features.
     
@@ -158,11 +159,15 @@ def process_segment(g: pd.DataFrame, sequence_length: int = 24, window: int = 5,
         sequence_length: Target sequence length (default: 24)
         window: Rolling window size (default: 5)
         eps: Small constant to avoid division by zero
+        has_seq_index: Whether dataframe has seq_index column (default: True)
         
     Returns:
         Processed segment dataframe with normalized features
     """
-    g = g.sort_values("seq_index").reset_index(drop=True)
+    if has_seq_index:
+        g = g.sort_values("seq_index").reset_index(drop=True)
+    else:
+        g = g.reset_index(drop=True)
 
     # Identify numeric columns (OHLC)
     num_cols = [c for c in ["open", "high", "low", "close"] if c in g.columns]
@@ -226,13 +231,12 @@ def process_segment(g: pd.DataFrame, sequence_length: int = 24, window: int = 5,
 
 def main():
     """Main preprocessing pipeline."""
-    # Setup logger
-    logger = setup_logger(__name__, config.LOG_FILE)
+    # Setup global pipeline logger (only here)
+    from utils import setup_logger
+    logger = setup_logger("pipeline", config.LOG_FILE)
     
-    logger.info("=" * 80)
     logger.info("DATA PREPROCESSING PIPELINE")
     logger.info(f"Started at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    logger.info("=" * 80)
     
     # Create output directory
     ensure_dir(config.OUTPUT_DIR_01)
@@ -341,9 +345,7 @@ def main():
     logger.info(f"Saved HDF5 segments: {config.SEGMENTS_HDF5}")
     
     # Load combined values for preprocessing
-    logger.info("\n" + "=" * 80)
-    logger.info("TRAIN/TEST SPLIT AND PREPROCESSING")
-    logger.info("=" * 80)
+    logger.info("\nTRAIN/TEST SPLIT AND PREPROCESSING")
     
     df_values = pd.read_csv(config.SEGMENTS_VALUES_CSV)
     df_values.columns = df_values.columns.str.lower()
@@ -435,10 +437,8 @@ def main():
     logger.info(f"\nSaved test data: {config.SEGMENTS_PREPROC_TEST_CSV}")
     logger.info(f"  Rows: {len(df_proc_test_sorted)}, Segments: {df_proc_test_sorted['segment_id'].nunique()}")
     
-    logger.info("\n" + "=" * 80)
-    logger.info("PREPROCESSING COMPLETED SUCCESSFULLY")
+    logger.info("\nPREPROCESSING COMPLETED SUCCESSFULLY")
     logger.info(f"Completed at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    logger.info("=" * 80)
 
 
 if __name__ == "__main__":

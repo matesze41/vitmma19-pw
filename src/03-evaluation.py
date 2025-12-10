@@ -211,13 +211,10 @@ def plot_training_history(trainer_log_dir, filename, logger):
 
 def main():
     """Main evaluation pipeline."""
-    # Setup logger
-    logger = setup_logger(__name__, config.LOG_FILE)
-    
-    logger.info("\n" + "=" * 80)
-    logger.info("MODEL EVALUATION PIPELINE")
+    # Setup global pipeline logger
+    logger = setup_logger("pipeline", config.LOG_FILE)
+    logger.info("[MODEL EVALUATION PIPELINE]")
     logger.info(f"Started at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    logger.info("=" * 80)
     
     # Create output directory
     ensure_dir(config.OUTPUT_DIR_03)
@@ -241,9 +238,7 @@ def main():
     logger.info(f"Number of classes: {num_classes}")
     
     # Load preprocessed data for validation evaluation
-    logger.info("\n" + "=" * 80)
-    logger.info("LOADING VALIDATION DATA")
-    logger.info("=" * 80)
+    logger.info("[LOADING VALIDATION DATA]")
     
     df = pd.read_csv(config.SEGMENTS_PREPROC_CSV)
     df = df.sort_values(["segment_id", "seq_pos"], kind="mergesort").reset_index(drop=True)
@@ -278,9 +273,7 @@ def main():
     full_loader = DataLoader(full_ds, batch_size=config.BATCH_SIZE, shuffle=False)
     
     # Load best model
-    logger.info("\n" + "=" * 80)
     logger.info("LOADING BEST MODEL")
-    logger.info("=" * 80)
     
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     logger.info(f"Using device: {device}")
@@ -295,7 +288,8 @@ def main():
         input_dim=input_dim,
         num_classes=num_classes,
         class_weights=class_weights,
-        map_location=device
+        map_location=device,
+        weights_only=False
     )
     best_model.eval()
     best_model.freeze()
@@ -304,9 +298,7 @@ def main():
     logger.info(f"Model loaded from: {best_model_path}")
     
     # Get predictions on full training data
-    logger.info("\n" + "=" * 80)
     logger.info("EVALUATING ON TRAINING DATA")
-    logger.info("=" * 80)
     
     cnn_preds, cnn_targets, cnn_probs = get_predictions(full_loader, best_model, device, logger)
     
@@ -336,9 +328,7 @@ def main():
     cm_cnn = confusion_matrix(cnn_true_labels, cnn_pred_labels, labels=label_values)
     
     # Evaluate baseline model on training data
-    logger.info("\n" + "=" * 80)
     logger.info("EVALUATING BASELINE MODEL ON TRAINING DATA")
-    logger.info("=" * 80)
     
     baseline_results = predict_from_segments_csv(config.SEGMENTS_VALUES_CSV,
                                                  slope_threshold=config.BASELINE_SLOPE_THRESHOLD)
@@ -366,9 +356,7 @@ def main():
     )
     
     # Load and evaluate on TEST set
-    logger.info("\n" + "=" * 80)
     logger.info("EVALUATING ON TEST SET")
-    logger.info("=" * 80)
     
     df_test = pd.read_csv(config.SEGMENTS_PREPROC_TEST_CSV)
     df_test = df_test.sort_values(["segment_id", "seq_pos"], kind="mergesort").reset_index(drop=True)
@@ -417,9 +405,7 @@ def main():
                              for i in range(num_classes)]
     test_pr_auc = np.mean(test_pr_auc_per_class)
     
-    logger.info("\n" + "=" * 80)
     logger.info("FINAL EVALUATION - Test Set Results (CNN Model)")
-    logger.info("=" * 80)
     logger.info(f"Accuracy:         {test_acc:.4f}")
     logger.info(f"F1 Score (macro): {test_f1:.4f}")
     logger.info(f"PR-AUC (macro):   {test_pr_auc:.4f} {'← PRIMARY METRIC' if config.PRIMARY_METRIC == 'pr_auc' else ''}")
@@ -446,9 +432,7 @@ def main():
             logger.info(f"  {line}")
     
     # Evaluate baseline on test set
-    logger.info("\n" + "=" * 80)
     logger.info("EVALUATING BASELINE MODEL ON TEST SET")
-    logger.info("=" * 80)
     
     baseline_test_results = predict_from_segments_csv(config.SEGMENTS_TEST_RAW_CSV,
                                                       slope_threshold=config.BASELINE_SLOPE_THRESHOLD)
@@ -466,16 +450,13 @@ def main():
     cm_baseline_test = confusion_matrix(baseline_test_labels, baseline_test_preds, labels=label_values)
     
     # Final comparison
-    logger.info("\n" + "=" * 80)
-    logger.info("FINAL MODEL COMPARISON - Test Set Performance")
-    logger.info("=" * 80)
+    logger.info("[FINAL MODEL COMPARISON - Test Set Performance]")
     logger.info(f"\nCNN Model (Deep Learning):")
     logger.info(f"  Accuracy:         {test_acc:.4f}")
     logger.info(f"  F1 Score (macro): {test_f1:.4f}")
     logger.info(f"  PR-AUC (macro):   {test_pr_auc:.4f}")
     logger.info(f"  AUC-ROC (OvO):    {test_auc_ovo:.4f}")
     logger.info(f"  AUC-ROC (OvR):    {test_auc_ovr:.4f}")
-    
     logger.info(f"\nBaseline Model (Heuristic):")
     logger.info(f"  Accuracy:         {baseline_test_acc:.4f}")
     logger.info(f"  F1 Score (macro): {baseline_test_f1:.4f}")
@@ -489,10 +470,7 @@ def main():
     logger.info(f"  Accuracy:  {acc_improvement:+.4f} ({acc_pct:+.1f}%)")
     logger.info(f"  F1 Score:  {f1_improvement:+.4f} ({f1_pct:+.1f}%)")
     
-    # Generate all visualizations
-    logger.info("\n" + "=" * 80)
-    logger.info("GENERATING VISUALIZATIONS")
-    logger.info("=" * 80)
+    logger.info("[GENERATING VISUALIZATIONS]")
     
     # Test set confusion matrices comparison
     plot_confusion_matrices(
@@ -535,13 +513,10 @@ def main():
     # Save metrics to file
     metrics_file = os.path.join(config.OUTPUT_DIR_03, "evaluation_metrics.txt")
     with open(metrics_file, 'w') as f:
-        f.write("=" * 80 + "\n")
         f.write("EVALUATION METRICS SUMMARY\n")
         f.write(f"Generated at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
-        f.write("=" * 80 + "\n\n")
         
         f.write("TEST SET PERFORMANCE\n")
-        f.write("-" * 80 + "\n")
         f.write(f"CNN Model:\n")
         f.write(f"  Accuracy:         {test_acc:.4f}\n")
         f.write(f"  F1 Score (macro): {test_f1:.4f}\n")
@@ -557,18 +532,13 @@ def main():
         f.write(f"  Accuracy:  {acc_improvement:+.4f} ({acc_pct:+.1f}%)\n")
         f.write(f"  F1 Score:  {f1_improvement:+.4f} ({f1_pct:+.1f}%)\n\n")
         
-        f.write("-" * 80 + "\n")
         f.write("\nCLASSIFICATION REPORT (CNN - Test Set)\n")
-        f.write("-" * 80 + "\n")
         f.write(report + "\n")
     
     logger.info(f"Saved evaluation metrics: {metrics_file}")
-    
-    logger.info("\n" + "=" * 80)
-    logger.info("EVALUATION COMPLETED SUCCESSFULLY")
+    logger.info("[EVALUATION COMPLETED SUCCESSFULLY]")
     logger.info(f"Completed at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     logger.info(f"All figures saved to: {figures_dir}")
-    logger.info("=" * 80)
 
 
 if __name__ == "__main__":

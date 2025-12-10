@@ -18,12 +18,15 @@ fi
 # Create log directory
 mkdir -p log
 
+# Clear previous log
+> log/run.log
+
 echo "Step 1/4: Data Preprocessing"
 echo "------------------------------------------------------------------------"
 echo "Extracting segments from Label Studio JSON..."
 echo "Engineering features and creating train/test split..."
 echo ""
-python src/01-data-preprocessing.py
+python -u src/01-data-preprocessing.py 2>&1 | tee -a log/run.log
 echo ""
 echo "✓ Preprocessing complete"
 echo "  Output: data/export/segments_preproc_24.csv (train)"
@@ -35,7 +38,7 @@ echo "------------------------------------------------------------------------"
 echo "Training CNN model with PyTorch Lightning..."
 echo "This may take 10-30 minutes depending on data size and hardware..."
 echo ""
-python src/02-training.py
+python -u src/02-training.py 2>&1 | tee -a log/run.log
 echo ""
 echo "✓ Training complete"
 echo "  Output: Best model checkpoint saved"
@@ -47,7 +50,7 @@ echo "------------------------------------------------------------------------"
 echo "Evaluating on test set and comparing with baseline..."
 echo "Generating visualizations..."
 echo ""
-python src/03-evaluation.py
+python -u src/03-evaluation.py 2>&1 | tee -a log/run.log
 echo ""
 echo "✓ Evaluation complete"
 echo "  Output: src/03_evaluation/evaluation_metrics.txt"
@@ -58,9 +61,9 @@ echo "Step 4/4: Inference Example"
 echo "------------------------------------------------------------------------"
 echo "Running inference on test set as demonstration..."
 echo ""
-python src/04-inference.py \
+python -u src/04-inference.py \
     --input data/export/segments_preproc_24_test.csv \
-    --output test_predictions.csv
+    --output test_predictions.csv 2>&1 | tee -a log/run.log
 echo ""
 echo "✓ Inference complete"
 echo "  Output: test_predictions.csv"

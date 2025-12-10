@@ -109,8 +109,12 @@ class FlagPatternClassifier(pl.LightningModule):
         )
         
         # Loss function with class weights
-        self.class_weights = torch.FloatTensor(class_weights)
-        self.criterion = nn.CrossEntropyLoss(weight=self.class_weights)
+        if class_weights is not None:
+            self.class_weights = torch.FloatTensor(class_weights)
+            self.criterion = nn.CrossEntropyLoss(weight=self.class_weights)
+        else:
+            self.class_weights = None
+            self.criterion = nn.CrossEntropyLoss()
         
         # Store predictions for epoch-end metrics
         self.validation_step_outputs = []
@@ -132,6 +136,16 @@ class FlagPatternClassifier(pl.LightningModule):
                 nn.init.xavier_uniform_(m.weight)
                 if m.bias is not None:
                     nn.init.zeros_(m.bias)
+    
+    def on_load_checkpoint(self, checkpoint):
+        """Handle checkpoint loading, ignore criterion weights if not needed."""
+        # Remove criterion.weight if class_weights is None (inference mode)
+        if self.class_weights is None and 'state_dict' in checkpoint:
+            state_dict = checkpoint['state_dict']
+            # Remove any criterion-related keys
+            keys_to_remove = [k for k in state_dict.keys() if k.startswith('criterion.')]
+            for key in keys_to_remove:
+                del state_dict[key]
     
     def forward(self, x):
         """Forward pass."""
@@ -252,9 +266,7 @@ class FlagPatternClassifier(pl.LightningModule):
 
 def load_and_prepare_data(logger):
     """Load preprocessed data and prepare for training."""
-    logger.info("\n" + "=" * 80)
-    logger.info("DATA LOADING AND PREPARATION")
-    logger.info("=" * 80)
+    logger.info("[DATA LOADING AND PREPARATION]")
     
     # Load preprocessed dataset
     df = pd.read_csv(config.SEGMENTS_PREPROC_CSV)
@@ -311,26 +323,20 @@ def load_and_prepare_data(logger):
 
 def main():
     """Main training pipeline."""
-    # Setup logger
-    logger = setup_logger(__name__, config.LOG_FILE)
+    # Setup global pipeline logger
+    logger = setup_logger("pipeline", config.LOG_FILE)
     
-    logger.info("=" * 80)
-    logger.info("FLAG PATTERN CLASSIFICATION - MODEL TRAINING")
+    logger.info("[FLAG PATTERN CLASSIFICATION - MODEL TRAINING]")
     logger.info(f"Started at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    logger.info("=" * 80)
     
     # Set random seeds for reproducibility
     seed_everything(config.SEED, workers=True)
-    logger.info("\n" + "=" * 80)
-    logger.info("CONFIGURATION - Random Seed")
-    logger.info("=" * 80)
+    logger.info("[CONFIGURATION - Random Seed]")
     logger.info(f"Random seed set to: {config.SEED}")
     logger.info("This ensures reproducible results across runs")
     
     # Log primary metric
-    logger.info("\n" + "=" * 80)
-    logger.info("CONFIGURATION - Primary Evaluation Metric")
-    logger.info("=" * 80)
+    logger.info("[CONFIGURATION - Primary Evaluation Metric]")
     logger.info(f"Primary metric: {config.METRIC_CONFIG[config.PRIMARY_METRIC]['name']}")
     logger.info(f"Monitor: {config.METRIC_CONFIG[config.PRIMARY_METRIC]['monitor']}")
     logger.info(f"Description: {config.METRIC_CONFIG[config.PRIMARY_METRIC]['description']}")
@@ -344,9 +350,7 @@ def main():
         X, y_idx, test_size=config.VAL_SIZE, random_state=config.SEED, stratify=y_idx
     )
     
-    logger.info("\n" + "=" * 80)
-    logger.info("DATA SPLIT - Train/Validation")
-    logger.info("=" * 80)
+    logger.info("[DATA SPLIT - Train/Validation]")
     logger.info(f"Training segments: {X_train.shape[0]} ({X_train.shape[0]/X.shape[0]*100:.1f}%)")
     logger.info(f"Validation segments: {X_val.shape[0]} ({X_val.shape[0]/X.shape[0]*100:.1f}%)")
     logger.info(f"Split ratio: {int((1-config.VAL_SIZE)*100)}/{int(config.VAL_SIZE*100)} (stratified by label)")
@@ -379,13 +383,11 @@ def main():
         batch_size=config.BATCH_SIZE
     )
     
-    logger.info("\n" + "=" * 80)
-    logger.info("MODEL ARCHITECTURE")
-    logger.info("=" * 80)
+    logger.info("[MODEL ARCHITECTURE]")
     logger.info(str(model))
     total_params = sum(p.numel() for p in model.parameters())
     trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
-    logger.info(f"\nTotal parameters: {total_params:,}")
+    logger.info(f"Total parameters: {total_params:,}")
     logger.info(f"Trainable parameters: {trainable_params:,}")
     logger.info(f"Non-trainable parameters: {total_params - trainable_params:,}")
     
@@ -402,9 +404,7 @@ def main():
         verbose=True
     )
     
-    logger.info("\n" + "=" * 80)
-    logger.info("CONFIGURATION - Training Hyperparameters")
-    logger.info("=" * 80)
+    logger.info("[CONFIGURATION - Training Hyperparameters]")
     logger.info(f"Maximum epochs: {config.MAX_EPOCHS}")
     logger.info(f"Batch size: {config.BATCH_SIZE}")
     logger.info(f"Learning rate: {config.LEARNING_RATE}")
@@ -415,8 +415,7 @@ def main():
     logger.info(f"Accelerator: {'GPU' if torch.cuda.is_available() else 'CPU'}")
     logger.info(f"Checkpoint directory: {config.CHECKPOINT_DIR}")
     logger.info(f"Model selection metric: {config.METRIC_CONFIG[config.PRIMARY_METRIC]['name']}")
-    logger.info(f"Monitor: {config.METRIC_CONFIG[config.PRIMARY_METRIC]['monitor']} "
-               f"(mode: {'max' if config.METRIC_CONFIG[config.PRIMARY_METRIC]['higher_is_better'] else 'min'})")
+    logger.info(f"Monitor: {config.METRIC_CONFIG[config.PRIMARY_METRIC]['monitor']} (mode: {'max' if config.METRIC_CONFIG[config.PRIMARY_METRIC]['higher_is_better'] else 'min'})")
     
     # Create trainer
     trainer = pl.Trainer(
@@ -431,9 +430,7 @@ def main():
     )
     
     # Train the model
-    logger.info("\n" + "=" * 80)
-    logger.info("TRAINING PROGRESS")
-    logger.info("=" * 80)
+    logger.info("[TRAINING PROGRESS]")
     logger.info(f"Training started at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     
     trainer.fit(model, train_loader, val_loader)
@@ -458,11 +455,8 @@ def main():
     with open(metadata_path, 'wb') as f:
         pickle.dump(metadata, f)
     logger.info(f"\nSaved training metadata: {metadata_path}")
-    
-    logger.info("\n" + "=" * 80)
-    logger.info("TRAINING COMPLETED SUCCESSFULLY")
+    logger.info("[TRAINING COMPLETED SUCCESSFULLY]")
     logger.info(f"Completed at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    logger.info("=" * 80)
 
 
 if __name__ == "__main__":
