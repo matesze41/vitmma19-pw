@@ -1,10 +1,7 @@
 # Deep Learning Class (VITMMA19) Project Work template
 
-[Complete the missing parts and delete the instruction parts before uploading.]
 
 ## Submission Instructions
-
-[Delete this entire section after reading and following the instructions.]
 
 ### Project Levels
 
@@ -15,17 +12,6 @@
 *   Baseline (reference) model
 *   Model development
 *   Basic evaluation
-
-**Outstanding Level (aiming for +1 mark)**
-*   Containerization
-*   Data acquisition and analysis
-*   Data cleansing and preparation
-*   Defining evaluation criteria
-*   Baseline (reference) model
-*   Incremental model development
-*   Advanced evaluation
-*   ML as a service (backend) with GUI frontend
-*   Creative ideas, well-developed solutions, and exceptional performance can also earn an extra grade (+1 mark).
 
 ### Data Preparation
 
@@ -76,17 +62,17 @@ Before submitting your project, ensure you have completed the following steps.
 
 ### Project Information
 
-- **Selected Topic**: [Enter Topic Name Here, options: AnkleAlign, Legal Text Decoder, Bull-flag detector, End-of-trip delay prediction]
-- **Student Name**: [Enter Your Name Here]
-- **Aiming for +1 Mark**: [Yes/No]
+- **Selected Topic**: Bull-flag detector
+- **Student Name**: Máté Szendrey (GFTYRV)
+- **Aiming for +1 Mark**: No
 
 ### Solution Description
 
-[Provide a short textual description of the solution here. Explain the problem, the model architecture chosen, the training methodology, and the results.]
+Did not plan to integrate the model intoa  real time solution so the task is the classification of OHLC data segments. Into one of the flag groups.
 
 ### Extra Credit Justification
 
-[If you selected "Yes" for Aiming for +1 Mark, describe here which specific part of your work (e.g., innovative model architecture, extensive experimentation, exceptional performance) you believe deserves an extra mark.]
+Although not aiming for +1, I implemented hyperparameter optimization on wandb. When Evaluating my models after training I used advanced metrics such as ROC-AUC curves and PR curve
 
 ### Docker Instructions
 
@@ -129,6 +115,7 @@ The repository is structured as follows:
     - `04-inference.py`: Script for running the model on new, unseen data to generate predictions.
     - `config.py`: Configuration file containing hyperparameters (e.g., epochs) and paths.
     - `utils.py`: Helper functions and utilities used across different scripts.
+    - `baseline_model.py`: baseline model.
 
 - **`notebook/`**: Contains Jupyter notebooks for analysis and experimentation.
     - `01-data-exploration.ipynb`: Notebook for initial exploratory data analysis (EDA) and visualization.
