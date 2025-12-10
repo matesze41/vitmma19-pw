@@ -312,3 +312,167 @@ Improvement (CNN vs Baseline):
 2025-12-10 20:41:52,078 - INFO - EXPERIMENT COMPLETED SUCCESSFULLY
 2025-12-10 20:41:52,079 - INFO - Completed at: 2025-12-10 20:41:52
 2025-12-10 20:41:52,079 - INFO - ================================================================================
+2025-12-10 21:14:54,648 - INFO - ================================================================================
+2025-12-10 21:14:54,649 - INFO - DATA PREPROCESSING PIPELINE
+2025-12-10 21:14:54,649 - INFO - Started at: 2025-12-10 21:14:54
+2025-12-10 21:14:54,649 - INFO - ================================================================================
+2025-12-10 21:14:55,087 - INFO - Found 4 JSON annotation files
+2025-12-10 21:14:55,087 - INFO - Processing JSON 1/4: /work/data/AY1PC8/BullFlag_Detector_Labeling_AY1PC8.json
+2025-12-10 21:14:55,097 - INFO -   Loaded 2 annotation entries
+2025-12-10 21:14:55,378 - INFO -   Added 77 segments, total: 77
+2025-12-10 21:14:55,378 - INFO - Processing JSON 2/4: /work/data/GFTYRV/project-4-at-2025-10-30-12-12-aaf7a367.json
+2025-12-10 21:14:55,388 - INFO -   Loaded 27 annotation entries
+2025-12-10 21:14:55,665 - INFO -   Added 58 segments, total: 135
+2025-12-10 21:14:55,665 - INFO - Processing JSON 3/4: /work/data/XOBJYX/labels.json
+2025-12-10 21:14:55,672 - INFO -   Loaded 3 annotation entries
+2025-12-10 21:14:55,751 - INFO -   Added 32 segments, total: 167
+2025-12-10 21:14:55,751 - INFO - Processing JSON 4/4: /work/data/YH6M5S/YH6M5S_labels.json
+2025-12-10 21:14:55,759 - INFO -   Loaded 1 annotation entries
+2025-12-10 21:14:55,893 - INFO -   Added 54 segments, total: 221
+2025-12-10 21:14:55,893 - INFO - 
+Total labeled segments extracted: 221
+2025-12-10 21:14:55,894 - INFO - 
+Label distribution:
+2025-12-10 21:14:55,895 - INFO -   Bullish Normal: 57
+2025-12-10 21:14:55,895 - INFO -   Bearish Normal: 56
+2025-12-10 21:14:55,895 - INFO -   Bearish Pennant: 32
+2025-12-10 21:14:55,895 - INFO -   Bullish Wedge: 27
+2025-12-10 21:14:55,895 - INFO -   Bullish Pennant: 27
+2025-12-10 21:14:55,896 - INFO -   Bearish Wedge: 22
+2025-12-10 21:14:55,901 - INFO - 
+Saved metadata: /work/data/export/segments_meta.csv
+2025-12-10 21:14:55,901 - INFO - 
+Creating combined segments CSV...
+2025-12-10 21:14:56,020 - INFO - Saved combined segments: /work/data/export/segments_values.csv
+2025-12-10 21:14:56,020 - INFO - 
+Saving segments to HDF5...
+2025-12-10 21:14:56,279 - INFO - Saved HDF5 segments: /work/data/export/segments.h5
+2025-12-10 21:14:56,280 - INFO - 
+================================================================================
+2025-12-10 21:14:56,280 - INFO - TRAIN/TEST SPLIT AND PREPROCESSING
+2025-12-10 21:14:56,280 - INFO - ================================================================================
+2025-12-10 21:14:56,289 - INFO - Loaded segments: (4951, 8)
+2025-12-10 21:14:56,902 - INFO - Total unique segments: 144
+2025-12-10 21:14:56,904 - INFO - Train segments: 129 (89.6%)
+2025-12-10 21:14:56,904 - INFO - Test segments: 15 (10.4%)
+2025-12-10 21:14:56,905 - INFO - 
+Train data shape: (4527, 8)
+2025-12-10 21:14:56,905 - INFO - Test data shape: (424, 8)
+2025-12-10 21:14:56,906 - INFO - 
+Train label distribution:
+2025-12-10 21:14:56,907 - INFO -   Bullish Normal: 36
+2025-12-10 21:14:56,907 - INFO -   Bearish Normal: 24
+2025-12-10 21:14:56,907 - INFO -   Bearish Pennant: 23
+2025-12-10 21:14:56,907 - INFO -   Bullish Pennant: 20
+2025-12-10 21:14:56,907 - INFO -   Bearish Wedge: 13
+2025-12-10 21:14:56,908 - INFO -   Bullish Wedge: 13
+2025-12-10 21:14:56,908 - INFO - 
+Test label distribution:
+2025-12-10 21:14:56,909 - INFO -   Bullish Normal: 4
+2025-12-10 21:14:56,909 - INFO -   Bearish Pennant: 3
+2025-12-10 21:14:56,909 - INFO -   Bearish Normal: 3
+2025-12-10 21:14:56,909 - INFO -   Bullish Wedge: 2
+2025-12-10 21:14:56,909 - INFO -   Bullish Pennant: 2
+2025-12-10 21:14:56,910 - INFO -   Bearish Wedge: 1
+2025-12-10 21:14:56,916 - INFO - 
+Saved test raw data: /work/data/export/segments_test_raw.csv
+2025-12-10 21:14:56,916 - INFO - 
+Processing training segments...
+2025-12-10 21:14:57,121 - INFO - Processing test segments...
+2025-12-10 21:14:57,145 - INFO - 
+Processed train shape: (3096, 12)
+2025-12-10 21:14:57,145 - INFO - Processed test shape: (360, 12)
+2025-12-10 21:14:57,145 - INFO - Features: ['open_norm', 'high_norm', 'low_norm', 'close_norm', 'vol_close', 'vol_high_low', 'compression_ratio', 'trend']
+2025-12-10 21:14:57,181 - INFO - 
+Saved training data: /work/data/export/segments_preproc_24.csv
+2025-12-10 21:14:57,181 - INFO -   Rows: 3096, Segments: 129
+2025-12-10 21:14:57,189 - INFO - 
+Saved test data: /work/data/export/segments_preproc_24_test.csv
+2025-12-10 21:14:57,189 - INFO -   Rows: 360, Segments: 15
+2025-12-10 21:14:57,190 - INFO - 
+================================================================================
+2025-12-10 21:14:57,190 - INFO - PREPROCESSING COMPLETED SUCCESSFULLY
+2025-12-10 21:14:57,190 - INFO - Completed at: 2025-12-10 21:14:57
+2025-12-10 21:14:57,190 - INFO - ================================================================================
+2025-12-10 21:15:25,709 - INFO - ================================================================================
+2025-12-10 21:15:25,709 - INFO - DATA PREPROCESSING PIPELINE
+2025-12-10 21:15:25,710 - INFO - Started at: 2025-12-10 21:15:25
+2025-12-10 21:15:25,710 - INFO - ================================================================================
+2025-12-10 21:15:26,173 - INFO - Found 4 JSON annotation files
+2025-12-10 21:15:26,173 - INFO - Processing JSON 1/4: /work/data/AY1PC8/BullFlag_Detector_Labeling_AY1PC8.json
+2025-12-10 21:15:26,176 - INFO -   Loaded 2 annotation entries
+2025-12-10 21:15:26,412 - INFO -   Added 77 segments, total: 77
+2025-12-10 21:15:26,412 - INFO - Processing JSON 2/4: /work/data/GFTYRV/project-4-at-2025-10-30-12-12-aaf7a367.json
+2025-12-10 21:15:26,415 - INFO -   Loaded 27 annotation entries
+2025-12-10 21:15:26,572 - INFO -   Added 58 segments, total: 135
+2025-12-10 21:15:26,572 - INFO - Processing JSON 3/4: /work/data/XOBJYX/labels.json
+2025-12-10 21:15:26,575 - INFO -   Loaded 3 annotation entries
+2025-12-10 21:15:26,630 - INFO -   Added 32 segments, total: 167
+2025-12-10 21:15:26,631 - INFO - Processing JSON 4/4: /work/data/YH6M5S/YH6M5S_labels.json
+2025-12-10 21:15:26,633 - INFO -   Loaded 1 annotation entries
+2025-12-10 21:15:26,757 - INFO -   Added 54 segments, total: 221
+2025-12-10 21:15:26,757 - INFO - 
+Total labeled segments extracted: 221
+2025-12-10 21:15:26,758 - INFO - 
+Label distribution:
+2025-12-10 21:15:26,759 - INFO -   Bullish Normal: 57
+2025-12-10 21:15:26,759 - INFO -   Bearish Normal: 56
+2025-12-10 21:15:26,759 - INFO -   Bearish Pennant: 32
+2025-12-10 21:15:26,759 - INFO -   Bullish Wedge: 27
+2025-12-10 21:15:26,760 - INFO -   Bullish Pennant: 27
+2025-12-10 21:15:26,760 - INFO -   Bearish Wedge: 22
+2025-12-10 21:15:26,764 - INFO - 
+Saved metadata: /work/data/export/segments_meta.csv
+2025-12-10 21:15:26,764 - INFO - 
+Creating combined segments CSV...
+2025-12-10 21:15:26,882 - INFO - Saved combined segments: /work/data/export/segments_values.csv
+2025-12-10 21:15:26,882 - INFO - 
+Saving segments to HDF5...
+2025-12-10 21:15:27,158 - INFO - Saved HDF5 segments: /work/data/export/segments.h5
+2025-12-10 21:15:27,158 - INFO - 
+================================================================================
+2025-12-10 21:15:27,159 - INFO - TRAIN/TEST SPLIT AND PREPROCESSING
+2025-12-10 21:15:27,159 - INFO - ================================================================================
+2025-12-10 21:15:27,166 - INFO - Loaded segments: (4951, 8)
+2025-12-10 21:15:27,461 - INFO - Total unique segments: 144
+2025-12-10 21:15:27,463 - INFO - Train segments: 129 (89.6%)
+2025-12-10 21:15:27,463 - INFO - Test segments: 15 (10.4%)
+2025-12-10 21:15:27,464 - INFO - 
+Train data shape: (4527, 8)
+2025-12-10 21:15:27,464 - INFO - Test data shape: (424, 8)
+2025-12-10 21:15:27,465 - INFO - 
+Train label distribution:
+2025-12-10 21:15:27,465 - INFO -   Bullish Normal: 36
+2025-12-10 21:15:27,466 - INFO -   Bearish Normal: 24
+2025-12-10 21:15:27,466 - INFO -   Bearish Pennant: 23
+2025-12-10 21:15:27,466 - INFO -   Bullish Pennant: 20
+2025-12-10 21:15:27,466 - INFO -   Bearish Wedge: 13
+2025-12-10 21:15:27,466 - INFO -   Bullish Wedge: 13
+2025-12-10 21:15:27,467 - INFO - 
+Test label distribution:
+2025-12-10 21:15:27,467 - INFO -   Bullish Normal: 4
+2025-12-10 21:15:27,467 - INFO -   Bearish Pennant: 3
+2025-12-10 21:15:27,468 - INFO -   Bearish Normal: 3
+2025-12-10 21:15:27,468 - INFO -   Bullish Wedge: 2
+2025-12-10 21:15:27,468 - INFO -   Bullish Pennant: 2
+2025-12-10 21:15:27,468 - INFO -   Bearish Wedge: 1
+2025-12-10 21:15:27,474 - INFO - 
+Saved test raw data: /work/data/export/segments_test_raw.csv
+2025-12-10 21:15:27,475 - INFO - 
+Processing training segments...
+2025-12-10 21:15:27,686 - INFO - Processing test segments...
+2025-12-10 21:15:27,709 - INFO - 
+Processed train shape: (3096, 12)
+2025-12-10 21:15:27,709 - INFO - Processed test shape: (360, 12)
+2025-12-10 21:15:27,709 - INFO - Features: ['open_norm', 'high_norm', 'low_norm', 'close_norm', 'vol_close', 'vol_high_low', 'compression_ratio', 'trend']
+2025-12-10 21:15:27,744 - INFO - 
+Saved training data: /work/data/export/segments_preproc_24.csv
+2025-12-10 21:15:27,745 - INFO -   Rows: 3096, Segments: 129
+2025-12-10 21:15:27,752 - INFO - 
+Saved test data: /work/data/export/segments_preproc_24_test.csv
+2025-12-10 21:15:27,753 - INFO -   Rows: 360, Segments: 15
+2025-12-10 21:15:27,753 - INFO - 
+================================================================================
+2025-12-10 21:15:27,753 - INFO - PREPROCESSING COMPLETED SUCCESSFULLY
+2025-12-10 21:15:27,753 - INFO - Completed at: 2025-12-10 21:15:27
+2025-12-10 21:15:27,754 - INFO - ================================================================================
