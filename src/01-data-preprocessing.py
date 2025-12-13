@@ -137,18 +137,18 @@ def extract_segments(json_entry, csv_directory):
 
     # Check if file_upload key exists
     if "file_upload" not in json_entry:
-        print("[extract_segments] WARNING: Entry missing 'file_upload' key, skipping")
+        logger.warning("[extract_segments] Entry missing 'file_upload' key, skipping")
         return []
     
     guid_name = json_entry["file_upload"]  # e.g., e2ab0dd4-GSPC_...
     
     # Handle None or empty file_upload
     if guid_name is None or guid_name == "":
-        print("[extract_segments] WARNING: file_upload is None or empty, skipping")
+        logger.warning("[extract_segments] file_upload is None or empty, skipping")
         return []
     
     clean_name = strip_guid(guid_name)
-    print(f"[extract_segments] file_upload={guid_name}, clean_name={clean_name}")
+    logger.info(f"[extract_segments] file_upload={guid_name}, clean_name={clean_name}")
 
     # Try loading the CSV from several likely locations:
     #  - the JSON's folder (csv_directory)
@@ -176,26 +176,26 @@ def extract_segments(json_entry, csv_directory):
             break
 
     if full_csv_path is None:
-        print("[extract_segments] WARNING: Cannot find CSV for annotation:", guid_name)
+        logger.warning(f"[extract_segments] Cannot find CSV for annotation: {guid_name}")
         return []
 
-    print(f"[extract_segments] Using CSV: {full_csv_path}")
+    logger.info(f"[extract_segments] Using CSV: {full_csv_path}")
 
     try:
         df_csv = pd.read_csv(full_csv_path)
     except Exception as e:
-        print("[extract_segments] ERROR reading CSV:", full_csv_path, e)
+        logger.error(f"[extract_segments] ERROR reading CSV: {full_csv_path} {e}")
         return []
 
     # Normalize column names to lowercase for consistent access
     df_csv.columns = df_csv.columns.str.lower()
     
     # Normalize OHLC column names so we always have 'open', 'high', 'low', 'close'
-    print(f"[extract_segments] CSV loaded with {len(df_csv)} rows and columns {list(df_csv.columns)}")
+    logger.info(f"[extract_segments] CSV loaded with {len(df_csv)} rows and columns {list(df_csv.columns)}")
 
     # Convert timestamp column to string if it's numeric (Unix timestamp)
     if "timestamp" in df_csv.columns and pd.api.types.is_numeric_dtype(df_csv["timestamp"]):
-        print(f"[extract_segments] Converting numeric timestamps to datetime strings")
+        logger.info(f"[extract_segments] Converting numeric timestamps to datetime strings")
         try:
             # Try Unix timestamp conversion (seconds)
             df_csv["timestamp"] = pd.to_datetime(df_csv["timestamp"], unit='s').dt.strftime('%Y-%m-%d %H:%M')
@@ -204,20 +204,20 @@ def extract_segments(json_entry, csv_directory):
                 # Try Unix timestamp conversion (milliseconds)
                 df_csv["timestamp"] = pd.to_datetime(df_csv["timestamp"], unit='ms').dt.strftime('%Y-%m-%d %H:%M')
             except Exception as e:
-                print(f"[extract_segments] WARNING: Could not convert timestamps: {e}")
+                logger.warning(f"[extract_segments] Could not convert timestamps: {e}")
                 return []
 
     segments = []
     
     # Check if annotations exist
     if "annotations" not in json_entry or not json_entry["annotations"]:
-        print(f"[extract_segments] WARNING: No annotations found for {guid_name}")
+        logger.warning(f"[extract_segments] No annotations found for {guid_name}")
         return []
     
     annotation = json_entry["annotations"][0]
 
     if not annotation["result"]:
-        print(f"[extract_segments] No labeled intervals in this entry for {guid_name}")
+        logger.info(f"[extract_segments] No labeled intervals in this entry for {guid_name}")
 
     for idx, result in enumerate(annotation["result"]):
         val = result["value"]
@@ -230,11 +230,11 @@ def extract_segments(json_entry, csv_directory):
         if "timestamp" in df_csv.columns:
             seg_df = df_csv[(df_csv["timestamp"] >= start) & (df_csv["timestamp"] <= end)].copy()
         else:
-            print(f"[extract_segments] WARNING: No timestamp column found in {guid_name}, skipping segment")
+            logger.warning(f"[extract_segments] No timestamp column found in {guid_name}, skipping segment")
             continue
 
         seg_df.reset_index(drop=True, inplace=True)
-        print(f"[extract_segments]  segment #{idx} label={label}, start={start}, end={end}, length={len(seg_df)}")
+        logger.info(f"[extract_segments]  segment #{idx} label={label}, start={start}, end={end}, length={len(seg_df)}")
 
         segments.append({
             "csv_file": clean_name,
@@ -245,37 +245,37 @@ def extract_segments(json_entry, csv_directory):
             "segment_data": seg_df
         })
 
-    print(f"[extract_segments] Total segments from {guid_name}: {len(segments)}")
+    logger.info(f"[extract_segments] Total segments from {guid_name}: {len(segments)}")
     return segments
 
 def strip_guid(filename):
-        """
-        Converts 'e2ab0dd4-FILENAME.csv' → 'FILENAME.csv'.
-        """
-        base = os.path.basename(filename)
-        parts = base.split("-", 1)
-        if len(parts) == 2:
-            print("Stripped GUID from", filename, "to", parts[1])
-            return parts[1]
-        print("Warning: could not strip GUID from", filename)
-        return base
+    """
+    Converts 'e2ab0dd4-FILENAME.csv' → 'FILENAME.csv'.
+    """
+    base = os.path.basename(filename)
+    parts = base.split("-", 1)
+    if len(parts) == 2:
+        logger.info(f"Stripped GUID from {filename} to {parts[1]}")
+        return parts[1]
+    logger.warning(f"Could not strip GUID from {filename}")
+    return base
 
 def preprocess():
     plt.style.use("ggplot")
 
-    print("Using base data directory:", BASE_DATA_DIR)
+    logger.info(f"Using base data directory: {BASE_DATA_DIR}")
 
     # %%
     json_files = glob(os.path.join(BASE_DATA_DIR, "**/*.json"), recursive=True)
 
-    print("Found JSON files:")
+    logger.info("Found JSON files:")
     for f in json_files:
-        print("  ", f)
+        logger.info(f"  {f}")
 
-    print("\nTotal JSON files:", len(json_files))
-    print("=" * 80)
-    print("JSON FILE DIAGNOSTIC REPORT")
-    print("=" * 80)
+    logger.info(f"Total JSON files: {len(json_files)}")
+    logger.info("=" * 80)
+    logger.info("JSON FILE DIAGNOSTIC REPORT")
+    logger.info("=" * 80)
 
     json_files = glob(os.path.join(BASE_DATA_DIR, "**/*.json"), recursive=True)
 
@@ -283,8 +283,8 @@ def preprocess():
         folder = os.path.dirname(json_path)
         folder_name = os.path.basename(folder)
         
-        print(f"\n📁 Folder: {folder_name}")
-        print(f"   JSON: {os.path.basename(json_path)}")
+        logger.info(f"\n📁 Folder: {folder_name}")
+        logger.info(f"   JSON: {os.path.basename(json_path)}")
         
         try:
             with open(json_path, "r", encoding="utf-8") as f:
@@ -312,66 +312,66 @@ def preprocess():
                 if not any(os.path.exists(c) for c in candidates):
                     missing_csvs.append(file_upload)
             
-            print(f"   Total entries: {len(entries)}")
-            print(f"   ✅ Entries with labeled segments: {entries_with_labels}")
-            print(f"   📊 Total labeled segments: {total_segments}")
+            logger.info(f"   Total entries: {len(entries)}")
+            logger.info(f"   ✅ Entries with labeled segments: {entries_with_labels}")
+            logger.info(f"   📊 Total labeled segments: {total_segments}")
             
             if missing_csvs:
-                print(f"   ⚠️  Missing CSV files: {len(missing_csvs)}")
+                logger.warning(f"   ⚠️  Missing CSV files: {len(missing_csvs)}")
                 for csv in missing_csvs[:3]:  # Show first 3
-                    print(f"      - {csv}")
+                    logger.warning(f"      - {csv}")
                 if len(missing_csvs) > 3:
-                    print(f"      ... and {len(missing_csvs) - 3} more")
+                    logger.warning(f"      ... and {len(missing_csvs) - 3} more")
             else:
-                print(f"   ✅ All CSV files found")
+                logger.info(f"   ✅ All CSV files found")
                 
         except Exception as e:
-            print(f"   ❌ ERROR: {e}")
+            logger.error(f"   ❌ ERROR: {e}")
 
-    print("\n" + "=" * 80)
-    print("AVAILABLE CSV FILES PER DIRECTORY:")
-    print("=" * 80)
+    logger.info("\n" + "=" * 80)
+    logger.info("AVAILABLE CSV FILES PER DIRECTORY:")
+    logger.info("=" * 80)
 
     for folder_path in [f.path for f in os.scandir(BASE_DATA_DIR) if f.is_dir() and f.name != 'export']:
         folder_name = os.path.basename(folder_path)
         csv_files = glob(os.path.join(folder_path, "*.csv"))
-        print(f"\n📁 {folder_name}: {len(csv_files)} CSV files")
+        logger.info(f"\n📁 {folder_name}: {len(csv_files)} CSV files")
         if len(csv_files) <= 5:
             for csv in csv_files:
-                print(f"   - {os.path.basename(csv)}")
+                logger.info(f"   - {os.path.basename(csv)}")
         else:
             for csv in csv_files[:3]:
-                print(f"   - {os.path.basename(csv)}")
-            print(f"   ... and {len(csv_files) - 3} more")
+                logger.info(f"   - {os.path.basename(csv)}")
+            logger.info(f"   ... and {len(csv_files) - 3} more")
 
     all_segments = []
 
-    print(f"[main] Found {len(json_files)} JSON files to process")
+    logger.info(f"[main] Found {len(json_files)} JSON files to process")
 
     for i, json_path in enumerate(json_files):
-        print(f"\n[main] ({i+1}/{len(json_files)}) Processing JSON:", json_path)
+        logger.info(f"\n[main] ({i+1}/{len(json_files)}) Processing JSON: {json_path}")
 
         folder = os.path.dirname(json_path)
-        print(f"[main]  CSV search base directory: {folder}")
+        logger.info(f"[main]  CSV search base directory: {folder}")
 
         try:
             with open(json_path, "r", encoding="utf-8") as f:
                 entries = json.load(f)
-            print(f"[main]  Loaded {len(entries)} annotation entries from JSON")
+            logger.info(f"[main]  Loaded {len(entries)} annotation entries from JSON")
         except Exception as e:
-            print("[main] ERROR reading JSON:", json_path, e)
+            logger.error(f"[main] ERROR reading JSON: {json_path} {e}")
             continue
 
         before_file = len(all_segments)
         for j, entry in enumerate(entries):
-            print(f"[main]   Entry {j+1}/{len(entries)} for file_upload={entry.get('file_upload')}")
+            logger.info(f"[main]   Entry {j+1}/{len(entries)} for file_upload={entry.get('file_upload')}")
             segs = extract_segments(entry, folder)
-            print(f"[main]   -> Extracted {len(segs)} segments from this entry")
+            logger.info(f"[main]   -> Extracted {len(segs)} segments from this entry")
             all_segments.extend(segs)
         after_file = len(all_segments)
-        print(f"[main] Finished {json_path}: added {after_file - before_file} segments, total so far {after_file}")
+        logger.info(f"[main] Finished {json_path}: added {after_file - before_file} segments, total so far {after_file}")
 
-    print("\n[main] Total labeled segments loaded:", len(all_segments))
+    logger.info(f"\n[main] Total labeled segments loaded: {len(all_segments)}")
     df_meta = pd.DataFrame([{
         "csv_file": seg["csv_file"],
         "label": seg["label"],
@@ -383,15 +383,15 @@ def preprocess():
     df_meta["label"].value_counts()
     lengths = df_meta["length"].values
 
-    print("Min length:", lengths.min())
-    print("Max length:", lengths.max())
-    print("Mean length:", lengths.mean())
-    print("Median length:", np.median(lengths))
+    logger.info(f"Min length: {lengths.min()}")
+    logger.info(f"Max length: {lengths.max()}")
+    logger.info(f"Mean length: {lengths.mean()}")
+    logger.info(f"Median length: {np.median(lengths)}")
     sample = all_segments[0]
     seg_df = sample["segment_data"]
 
-    print("seg_df columns:", seg_df.columns)
-    print(seg_df.head())
+    logger.info(f"seg_df columns: {seg_df.columns}")
+    logger.info(f"{seg_df.head()}")
 
     dataset = []
 
@@ -403,8 +403,8 @@ def preprocess():
         })
 
     len(dataset)
-    print("Total labeled segments:", len(dataset))
-    print("Unique labels:", df_meta["label"].unique())
+    logger.info(f"Total labeled segments: {len(dataset)}")
+    logger.info(f"Unique labels: {df_meta['label'].unique()}")
     df_meta.describe()
 
 
@@ -420,36 +420,36 @@ def preprocess():
         stratify=segment_labels
     )
 
-    print("="*80)
-    print("STRATIFIED TRAIN/TEST SPLIT")
-    print("="*80)
-    print(f"Total segments: {len(all_segments)}")
-    print(f"Training segments: {len(train_indices)} ({len(train_indices)/len(all_segments)*100:.1f}%)")
-    print(f"Test segments: {len(test_indices)} ({len(test_indices)/len(all_segments)*100:.1f}%)")
+    logger.info("="*80)
+    logger.info("STRATIFIED TRAIN/TEST SPLIT")
+    logger.info("="*80)
+    logger.info(f"Total segments: {len(all_segments)}")
+    logger.info(f"Training segments: {len(train_indices)} ({len(train_indices)/len(all_segments)*100:.1f}%)")
+    logger.info(f"Test segments: {len(test_indices)} ({len(test_indices)/len(all_segments)*100:.1f}%)")
 
     # Verify stratification
     train_label_dist = pd.Series([all_segments[i]["label"] for i in train_indices]).value_counts(normalize=True).sort_index()
     test_label_dist = pd.Series([all_segments[i]["label"] for i in test_indices]).value_counts(normalize=True).sort_index()
 
-    print("\nLabel distribution (proportions):")
+    logger.info("\nLabel distribution (proportions):")
     comparison_df = pd.DataFrame({
         'Train': train_label_dist,
         'Test': test_label_dist,
         'Overall': df_meta["label"].value_counts(normalize=True).sort_index()
     })
-    print(comparison_df)
-    print("\n" + "="*80)
+    logger.info(f"{comparison_df}")
+    logger.info("\n" + "="*80)
 
     test_labels = [all_segments[i]["label"] for i in test_indices]
     test_label_counts = pd.Series(test_labels).value_counts()
 
-    print("Test set label counts:")
-    print(test_label_counts)
-    print(f"\nTest set total: {len(test_labels)} segments")
+    logger.info("Test set label counts:")
+    logger.info(f"{test_label_counts}")
+    logger.info(f"\nTest set total: {len(test_labels)} segments")
 
     EXPORT_DIR = os.path.join(BASE_DATA_DIR, "export")
     os.makedirs(EXPORT_DIR, exist_ok=True)
-    print("Exporting data to:", EXPORT_DIR)
+    logger.info(f"Exporting data to: {EXPORT_DIR}")
 
     # Create train and test segment lists
     train_segments = [all_segments[i] for i in train_indices]
@@ -458,19 +458,19 @@ def preprocess():
     # 1) Save metadata summary (overall, train, test)
     meta_csv_path = os.path.join(EXPORT_DIR, "segments_meta.csv")
     df_meta.to_csv(meta_csv_path, index=False)
-    print("Saved metadata CSV:", meta_csv_path)
+    logger.info(f"Saved metadata CSV: {meta_csv_path}")
 
     # Save train metadata
     df_meta_train = df_meta.iloc[train_indices].reset_index(drop=True)
     meta_train_path = os.path.join(EXPORT_DIR, "segments_meta_train.csv")
     df_meta_train.to_csv(meta_train_path, index=False)
-    print("Saved train metadata CSV:", meta_train_path)
+    logger.info(f"Saved train metadata CSV: {meta_train_path}")
 
     # Save test metadata
     df_meta_test = df_meta.iloc[test_indices].reset_index(drop=True)
     meta_test_path = os.path.join(EXPORT_DIR, "segments_meta_test.csv")
     df_meta_test.to_csv(meta_test_path, index=False)
-    print("Saved test metadata CSV:", meta_test_path)
+    logger.info(f"Saved test metadata CSV: {meta_test_path}")
 
     # 2) Save full segments to HDF5 (efficient, reloadable)
     h5_path = os.path.join(EXPORT_DIR, "segments.h5")
@@ -499,39 +499,39 @@ def preprocess():
             for col in seg_df.columns:
                 sgrp.create_dataset(col, data=seg_df[col].values)
 
-    print("Saved segments to HDF5:", h5_path)
+    logger.info(f"Saved segments to HDF5: {h5_path}")
 
     # Save combined CSV for all segments
     combined_csv_path = os.path.join(EXPORT_DIR, "segments_values.csv")
     combined_df = build_combined_csv(all_segments, segment_indices)
     if combined_df is not None:
         combined_df.to_csv(combined_csv_path, index=False)
-        print("Saved combined segments CSV:", combined_csv_path)
+        logger.info(f"Saved combined segments CSV: {combined_csv_path}")
 
     # Save train split
     combined_train_path = os.path.join(EXPORT_DIR, "segments_values_train.csv")
     combined_train_df = build_combined_csv(all_segments, train_indices, "train")
     if combined_train_df is not None:
         combined_train_df.to_csv(combined_train_path, index=False)
-        print("Saved train segments CSV:", combined_train_path)
+        logger.info(f"Saved train segments CSV: {combined_train_path}")
 
     # Save test split
     combined_test_path = os.path.join(EXPORT_DIR, "segments_values_test.csv")
     combined_test_df = build_combined_csv(all_segments, test_indices, "test")
     if combined_test_df is not None:
         combined_test_df.to_csv(combined_test_path, index=False)
-        print("Saved test segments CSV:", combined_test_path)
+        logger.info(f"Saved test segments CSV: {combined_test_path}")
 
-    print("\nSplit summary:")
-    print(f"  Total segments: {len(all_segments)}")
-    print(f"  Train segments: {len(train_indices)} ({len(train_indices)/len(all_segments)*100:.1f}%)")
-    print(f"  Test segments: {len(test_indices)} ({len(test_indices)/len(all_segments)*100:.1f}%)")
+    logger.info("\nSplit summary:")
+    logger.info(f"  Total segments: {len(all_segments)}")
+    logger.info(f"  Train segments: {len(train_indices)} ({len(train_indices)/len(all_segments)*100:.1f}%)")
+    logger.info(f"  Test segments: {len(test_indices)} ({len(test_indices)/len(all_segments)*100:.1f}%)")
     
-    print("Data Manipulationm begins here")
+    logger.info("Data Manipulationm begins here")
     
-    print("Export dir:", EXPORT_DIR)
-    print("Values CSV exists:", os.path.exists(VALUES_CSV))
-    print("Meta CSV exists:", os.path.exists(META_CSV))
+    logger.info(f"Export dir: {EXPORT_DIR}")
+    logger.info(f"Values CSV exists: {os.path.exists(VALUES_CSV)}")
+    logger.info(f"Meta CSV exists: {os.path.exists(META_CSV)}")
 
     df_values = pd.read_csv(VALUES_CSV)
     df_meta = pd.read_csv(META_CSV)
@@ -540,12 +540,12 @@ def preprocess():
     df_values.columns = df_values.columns.str.lower()
     df_meta.columns = df_meta.columns.str.lower()
 
-    print("df_values:", df_values.shape)
-    print("df_meta:", df_meta.shape)
+    logger.info(f"df_values: {df_values.shape}")
+    logger.info(f"df_meta: {df_meta.shape}")
 
     # Get unique segment IDs
     unique_segments = df_values['segment_id'].unique()
-    print(f"Total segments: {len(unique_segments)}")
+    logger.info(f"Total segments: {len(unique_segments)}")
 
     # Split segment IDs into train and test (stratified by label)
     segment_labels = df_values.groupby('segment_id')['label'].first()
@@ -556,37 +556,37 @@ def preprocess():
         stratify=segment_labels
     )
 
-    print(f"Train segments: {len(train_seg_ids)}")
-    print(f"Test segments: {len(test_seg_ids)}")
+    logger.info(f"Train segments: {len(train_seg_ids)}")
+    logger.info(f"Test segments: {len(test_seg_ids)}")
 
     # Split the data
     df_values_train = df_values[df_values['segment_id'].isin(train_seg_ids)].copy()
     df_values_test = df_values[df_values['segment_id'].isin(test_seg_ids)].copy()
 
-    print(f"\nTrain data shape: {df_values_train.shape}")
-    print(f"Test data shape: {df_values_test.shape}")
+    logger.info(f"\nTrain data shape: {df_values_train.shape}")
+    logger.info(f"Test data shape: {df_values_test.shape}")
 
     # Verify label distribution
-    print("\nTrain label distribution:")
-    print(df_values_train.groupby('segment_id')['label'].first().value_counts())
-    print("\nTest label distribution:")
-    print(df_values_test.groupby('segment_id')['label'].first().value_counts())
+    logger.info("\nTrain label distribution:")
+    logger.info(f"{df_values_train.groupby('segment_id')['label'].first().value_counts()}")
+    logger.info("\nTest label distribution:")
+    logger.info(f"{df_values_test.groupby('segment_id')['label'].first().value_counts()}")
 
     df_values_test.to_csv(TEST_RAW_CSV, index=False)
-    print(f"\nSaved test raw data: {TEST_RAW_CSV}")
+    logger.info(f"\nSaved test raw data: {TEST_RAW_CSV}")
 
     NUM_COLS = [c for c in ["open","high","low","close"] if c in df_values_train.columns]
     assert set(["segment_id","label","csv_file","seq_index"]).issubset(df_values_train.columns), "Required columns missing in values CSV"
     assert len(NUM_COLS) >= 1, "No OHLC columns found"
 
     # Process training data
-    print("Processing training segments...")
+    logger.info("Processing training segments...")
     groups_train = df_values_train.groupby("segment_id", sort=True)
     processed_list_train: List[pd.DataFrame] = [process_segment(g.copy()) for _, g in groups_train]
     df_proc_train = pd.concat(processed_list_train, axis=0, ignore_index=True)
 
     # Process test data
-    print("Processing test segments...")
+    logger.info("Processing test segments...")
     groups_test = df_values_test.groupby("segment_id", sort=True)
     processed_list_test: List[pd.DataFrame] = [process_segment(g.copy()) for _, g in groups_test]
     df_proc_test = pd.concat(processed_list_test, axis=0, ignore_index=True)
@@ -601,8 +601,8 @@ def preprocess():
     df_proc_train = df_proc_train[keep_cols]
     df_proc_test = df_proc_test[keep_cols]
 
-    print(f"\nProcessed train shape: {df_proc_train.shape}")
-    print(f"Processed test shape: {df_proc_test.shape}")
+    logger.info(f"\nProcessed train shape: {df_proc_train.shape}")
+    logger.info(f"Processed test shape: {df_proc_test.shape}")
 
     # For backward compatibility, keep df_proc as training data
     df_proc = df_proc_train.copy()
@@ -614,20 +614,20 @@ def preprocess():
     PREPROC_CSV = os.path.join(EXPORT_DIR, "segments_preproc_24.csv")
     _df_train = df_proc_train.sort_values(["segment_id", "seq_pos"], kind="mergesort").reset_index(drop=True)
     _df_train.to_csv(PREPROC_CSV, index=False)
-    print("Saved training data:", PREPROC_CSV)
-    print(f"  Rows: {len(_df_train)}, Segments: {_df_train['segment_id'].nunique()}")
+    logger.info(f"Saved training data: {PREPROC_CSV}")
+    logger.info(f"  Rows: {len(_df_train)}, Segments: {_df_train['segment_id'].nunique()}")
 
     # Save test data
     _df_test = df_proc_test.sort_values(["segment_id", "seq_pos"], kind="mergesort").reset_index(drop=True)
     _df_test.to_csv(PREPROC_TEST_CSV, index=False)
-    print("\nSaved test data:", PREPROC_TEST_CSV)
-    print(f"  Rows: {len(_df_test)}, Segments: {_df_test['segment_id'].nunique()}")
+    logger.info(f"\nSaved test data: {PREPROC_TEST_CSV}")
+    logger.info(f"  Rows: {len(_df_test)}, Segments: {_df_test['segment_id'].nunique()}")
 
-    print("\nColumns:", list(_df_train.columns))
-    print("\nTraining data sample:")
-    print(_df_train.sample(min(5, len(_df_train)), random_state=0))
-    print("\nTest data sample:")
-    print(_df_test.sample(min(5, len(_df_test)), random_state=0))
+    logger.info(f"\nColumns: {list(_df_train.columns)}")
+    logger.info("\nTraining data sample:")
+    logger.info(f"{_df_train.sample(min(5, len(_df_train)), random_state=0)}")
+    logger.info("\nTest data sample:")
+    logger.info(f"{_df_test.sample(min(5, len(_df_test)), random_state=0)}")
     
 if __name__ == "__main__":
     preprocess()
