@@ -41,43 +41,6 @@ def setup_logger(name='pipeline', log_file='../log/run.log'):
 
     return logger
 
-
-def minmax_norm(s: pd.Series) -> pd.Series:
-    """
-    Min-max normalization of a pandas Series.
-    
-    Args:
-        s: Input series
-        
-    Returns:
-        Normalized series with values in [0, 1]
-    """
-    vmin = s.min()
-    vmax = s.max()
-    if pd.isna(vmin) or pd.isna(vmax) or vmax == vmin:
-        return pd.Series(np.zeros(len(s), dtype=float), index=s.index)
-    return (s - vmin) / (vmax - vmin)
-
-
-def interpolate_series(orig_x: np.ndarray, y: np.ndarray, tgt_x: np.ndarray) -> np.ndarray:
-    """
-    Interpolate a series to a new set of x values.
-    
-    Args:
-        orig_x: Original x values
-        y: Original y values
-        tgt_x: Target x values
-        
-    Returns:
-        Interpolated y values at target x positions
-    """
-    if len(y) == 0:
-        return np.zeros(len(tgt_x), dtype=float)
-    if len(y) == 1:
-        return np.full(len(tgt_x), float(y[0]))
-    return np.interp(tgt_x, orig_x, y)
-
-
 def strip_guid(filename: str) -> str:
     """
     Converts 'e2ab0dd4-FILENAME.csv' → 'FILENAME.csv'.
