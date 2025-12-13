@@ -12,9 +12,93 @@ import h5py
 import matplotlib.pyplot as plt
 from collections import Counter
 from sklearn.model_selection import train_test_split
+from typing import List
+import pandas as pd
 
 logger = setup_logger()
 BASE_DATA_DIR = os.path.abspath("../data")
+EXPORT_DIR = os.path.join(BASE_DATA_DIR, "export")
+VALUES_CSV = os.path.join(EXPORT_DIR, "segments_values.csv")
+META_CSV = os.path.join(EXPORT_DIR, "segments_meta.csv")
+TEST_RAW_CSV = os.path.join(EXPORT_DIR, "segments_test_raw.csv")
+PREPROC_TEST_CSV = os.path.join(EXPORT_DIR, "segments_preproc_24_test.csv")
+WINDOW = 5  # rolling window for per-step volatility features
+EPS = 1e-9
+
+def minmax_norm(s: pd.Series) -> pd.Series:
+    vmin = s.min()
+    vmax = s.max()
+    if pd.isna(vmin) or pd.isna(vmax) or vmax == vmin:
+        return pd.Series(np.zeros(len(s), dtype=float), index=s.index)
+    return (s - vmin) / (vmax - vmin)
+
+def _interp_series(orig_x: np.ndarray, y: np.ndarray, tgt_x: np.ndarray) -> np.ndarray:
+    if len(y) == 0:
+        return np.zeros(len(tgt_x), dtype=float)
+    if len(y) == 1:
+        return np.full(len(tgt_x), float(y[0]))
+    return np.interp(tgt_x, orig_x, y)
+
+def process_segment(g: pd.DataFrame) -> pd.DataFrame:
+    g = g.sort_values("seq_index").reset_index(drop=True)
+    
+    # Determine numeric columns available
+    num_cols = [c for c in ["open","high","low","close"] if c in g.columns]
+
+    # Raw spread for compression ratio (per-step)
+    raw_high = g["high"].astype(float) if "high" in g.columns else pd.Series(np.zeros(len(g)))
+    raw_low  = g["low"].astype(float)  if "low" in g.columns  else pd.Series(np.zeros(len(g)))
+    raw_spread = (raw_high - raw_low).to_numpy()
+    start_spread = float(raw_spread[0]) if len(raw_spread) else 0.0
+    comp_series = (raw_spread / max(abs(start_spread), EPS)) if len(raw_spread) else np.array([], dtype=float)
+
+    # Normalize OHLC per segment on raw values
+    norm = {}
+    for c in num_cols:
+        norm[f"{c}_norm"] = minmax_norm(g[c].astype(float))
+    norm_df = pd.DataFrame(norm)
+
+    # Resample normalized columns and compression ratio to 24 steps
+    L = len(g)
+    orig_x = np.arange(L, dtype=float) if L > 1 else np.array([0.0])
+    tgt_x = np.linspace(0.0, max(0.0, (L - 1.0)), 24)
+
+    resampled = {}
+    for col in norm_df.columns:
+        y = norm_df[col].astype(float).to_numpy()
+        resampled[col] = _interp_series(orig_x, y, tgt_x)
+
+    comp_resampled = _interp_series(orig_x, comp_series, tgt_x)
+
+    out = pd.DataFrame(resampled)
+
+    # Per-datapoint engineered features on resampled normalized series
+    close_n = out["close_norm"] if "close_norm" in out.columns else pd.Series(np.zeros(24))
+    high_n  = out["high_norm"]  if "high_norm"  in out.columns else pd.Series(np.zeros(24))
+    low_n   = out["low_norm"]   if "low_norm"   in out.columns else pd.Series(np.zeros(24))
+    open_n  = out["open_norm"]  if "open_norm"  in out.columns else pd.Series(np.zeros(24))
+
+    # Rolling volatility features (per point)
+    vol_close = pd.Series(close_n).rolling(WINDOW, min_periods=1).std().fillna(0.0).to_numpy()
+    spread_n = (pd.Series(high_n) - pd.Series(low_n)).to_numpy()
+    vol_high_low = pd.Series(spread_n).rolling(WINDOW, min_periods=1).mean().fillna(0.0).to_numpy()
+
+    # Per-step compression ratio (from raw spread, resampled) with clipping to [0.2, 3.0]
+    compression_ratio = np.clip(comp_resampled, 0.2, 3.0)
+
+    # Per-step trend
+    trend = (pd.Series(open_n) - pd.Series(close_n)).to_numpy()
+
+    # Assemble output with metadata
+    out.insert(0, "segment_id", int(g["segment_id"].iloc[0]))
+    out.insert(1, "label", g["label"].iloc[0])
+    out.insert(2, "csv_file", g["csv_file"].iloc[0])
+    out["seq_pos"] = np.arange(1, 25, dtype=int)  # 1..24
+    out["vol_close"] = vol_close
+    out["vol_high_low"] = vol_high_low
+    out["compression_ratio"] = compression_ratio
+    out["trend"] = trend
+    return out
 
 # Combined CSV helper function
 def build_combined_csv(segments, segment_indices, split_name=""):
@@ -442,7 +526,108 @@ def preprocess():
     print(f"  Total segments: {len(all_segments)}")
     print(f"  Train segments: {len(train_indices)} ({len(train_indices)/len(all_segments)*100:.1f}%)")
     print(f"  Test segments: {len(test_indices)} ({len(test_indices)/len(all_segments)*100:.1f}%)")
+    
+    print("Data Manipulationm begins here")
+    
+    print("Export dir:", EXPORT_DIR)
+    print("Values CSV exists:", os.path.exists(VALUES_CSV))
+    print("Meta CSV exists:", os.path.exists(META_CSV))
 
+    df_values = pd.read_csv(VALUES_CSV)
+    df_meta = pd.read_csv(META_CSV)
 
+    # Normalize column names to lowercase for consistent access
+    df_values.columns = df_values.columns.str.lower()
+    df_meta.columns = df_meta.columns.str.lower()
+
+    print("df_values:", df_values.shape)
+    print("df_meta:", df_meta.shape)
+
+    # Get unique segment IDs
+    unique_segments = df_values['segment_id'].unique()
+    print(f"Total segments: {len(unique_segments)}")
+
+    # Split segment IDs into train and test (stratified by label)
+    segment_labels = df_values.groupby('segment_id')['label'].first()
+    train_seg_ids, test_seg_ids = train_test_split(
+        unique_segments, 
+        test_size=0.10, 
+        random_state=11,
+        stratify=segment_labels
+    )
+
+    print(f"Train segments: {len(train_seg_ids)}")
+    print(f"Test segments: {len(test_seg_ids)}")
+
+    # Split the data
+    df_values_train = df_values[df_values['segment_id'].isin(train_seg_ids)].copy()
+    df_values_test = df_values[df_values['segment_id'].isin(test_seg_ids)].copy()
+
+    print(f"\nTrain data shape: {df_values_train.shape}")
+    print(f"Test data shape: {df_values_test.shape}")
+
+    # Verify label distribution
+    print("\nTrain label distribution:")
+    print(df_values_train.groupby('segment_id')['label'].first().value_counts())
+    print("\nTest label distribution:")
+    print(df_values_test.groupby('segment_id')['label'].first().value_counts())
+
+    df_values_test.to_csv(TEST_RAW_CSV, index=False)
+    print(f"\nSaved test raw data: {TEST_RAW_CSV}")
+
+    NUM_COLS = [c for c in ["open","high","low","close"] if c in df_values_train.columns]
+    assert set(["segment_id","label","csv_file","seq_index"]).issubset(df_values_train.columns), "Required columns missing in values CSV"
+    assert len(NUM_COLS) >= 1, "No OHLC columns found"
+
+    # Process training data
+    print("Processing training segments...")
+    groups_train = df_values_train.groupby("segment_id", sort=True)
+    processed_list_train: List[pd.DataFrame] = [process_segment(g.copy()) for _, g in groups_train]
+    df_proc_train = pd.concat(processed_list_train, axis=0, ignore_index=True)
+
+    # Process test data
+    print("Processing test segments...")
+    groups_test = df_values_test.groupby("segment_id", sort=True)
+    processed_list_test: List[pd.DataFrame] = [process_segment(g.copy()) for _, g in groups_test]
+    df_proc_test = pd.concat(processed_list_test, axis=0, ignore_index=True)
+
+    # Keep normalized OHLC, engineered features, and ids
+    keep_cols = (["segment_id","label","csv_file","seq_pos"] +
+                [f"{c}_norm" for c in NUM_COLS] +
+                ["vol_close","vol_high_low","compression_ratio","trend"]) 
+    # Retain only columns that exist (in case some OHLC missing)
+    keep_cols = [c for c in keep_cols if c in df_proc_train.columns]
+
+    df_proc_train = df_proc_train[keep_cols]
+    df_proc_test = df_proc_test[keep_cols]
+
+    print(f"\nProcessed train shape: {df_proc_train.shape}")
+    print(f"Processed test shape: {df_proc_test.shape}")
+
+    # For backward compatibility, keep df_proc as training data
+    df_proc = df_proc_train.copy()
+    df_proc.head()
+
+    os.makedirs(EXPORT_DIR, exist_ok=True)
+
+    # Save training data
+    PREPROC_CSV = os.path.join(EXPORT_DIR, "segments_preproc_24.csv")
+    _df_train = df_proc_train.sort_values(["segment_id", "seq_pos"], kind="mergesort").reset_index(drop=True)
+    _df_train.to_csv(PREPROC_CSV, index=False)
+    print("Saved training data:", PREPROC_CSV)
+    print(f"  Rows: {len(_df_train)}, Segments: {_df_train['segment_id'].nunique()}")
+
+    # Save test data
+    _df_test = df_proc_test.sort_values(["segment_id", "seq_pos"], kind="mergesort").reset_index(drop=True)
+    _df_test.to_csv(PREPROC_TEST_CSV, index=False)
+    print("\nSaved test data:", PREPROC_TEST_CSV)
+    print(f"  Rows: {len(_df_test)}, Segments: {_df_test['segment_id'].nunique()}")
+
+    print("\nColumns:", list(_df_train.columns))
+    print("\nTraining data sample:")
+    print(_df_train.sample(min(5, len(_df_train)), random_state=0))
+    print("\nTest data sample:")
+    print(_df_test.sample(min(5, len(_df_test)), random_state=0))
+    
 if __name__ == "__main__":
     preprocess()
