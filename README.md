@@ -13,10 +13,20 @@ Please download the subset from:
 
 *No need to copy it inside the running container you can just put it at the correct directory before starting the container, container will mount to the whole project folder because I used it for developement also*
 
-/work/data is the parent and inside is the following:
-- /work/data/AY1PC8
-- /work/data/GFTYRV
+**On the host machine inside the project folder:**
+
+/data is the parent, and the following folders inside:
+- AY1PC8
+- GFTYRV
 - etc...
+
+**Inside the container it should look like:**
+
+/work/data is the parent and inside are the following folders:
+- AY1PC8
+- GFTYRV
+- etc...
+
 
 *Although not important to know for the scripts to work each of these folders contain csv files and json files with the labelling withouth any additional folder structure*
 
@@ -48,29 +58,9 @@ Although not aiming for +1, I implemented advanced data engineering pipeline tha
 
 I set up docker compose to make the project binding and starting easier for users.
 
-#### Build
-
-Run the following command in the root directory of the repository to build the Docker image:
-
-```bash
-docker compose build
-```
-
-#### Run
-
-(Inside the container it should be at /work/data).
-
-**To capture the logs for submission (required), redirect the output to a file:**
-
-```bash
-docker compose up
-```
-
 *   **To run training scripts you must save the training data to the data folder in the project root as detailed in an other chapter!** [Data preparation requirements](#data-preparation).
-*   logs will appear in /work/log/run.log when running the run.sh script, otherwise logs are only printed to the console
+*   logs will appear in /work/log/run.log when running the run.sh script, otherwise logs are only printed to the console inside the container
 *   The container is configured to run every step (data preprocessing, training, evaluation, inference).
-
-### First-time Container Setup
 
 Do the following steps after pasting the data inside the data folder specified in [Data preparation requirements](#data-preparation).
 
@@ -90,7 +80,7 @@ The first time you use this project, you need to create the Conda environment in
 
     You should now be inside the container at the `/work` directory.
 
-3. **Initialize Conda (inside the container, first time only):**
+3. **Initialize Conda (inside the container bash, first time only):**
 
     ```bash
     conda init bash
@@ -98,27 +88,31 @@ The first time you use this project, you need to create the Conda environment in
     exec bash
     ```
 
-    Accept the Conda terms of service when prompted.
+    **Accept the Conda terms of service when prompted.**
 
-4. **Create the environment (inside the container, first time only):**
+4. **Create the environment (inside the container bash, first time only):**
 
     ```bash
     conda env create -f environment.yml
+    # wait please :)
     ```
 
-5. **Activate the environment (inside the container):**
+5. **Activate the environment (inside the container bash):**
 
     ```bash
     conda activate workenv
     ```
 
-6. **Run the full pipeline via the helper script (inside the container):**
+6. **Run the full pipeline via the helper script (inside the container bash):**
 
     ```bash
+    sed -i 's/\r$//' ./run.sh # only needed the first time to replace fix line endings
     bash ./run.sh
     ```
 
-For subsequent runs you only need to:
+**You will find the log file inside the log directory of the project on both your host and on the container**
+
+For subsequent runs with the same container you only need to:
 
 - Start a shell in the container: `docker compose run --rm app bash`
 - Activate the environment: `conda activate workenv`
