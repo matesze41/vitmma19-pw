@@ -68,9 +68,57 @@ docker compose up
 *   logs will appear in /work/log/run.log when running the run.sh script, otherwise logs are only printed to the console
 *   The container is configured to run every step (data preprocessing, training, evaluation, inference).
 
+### First-time Container Setup
 
-To run the sh script:
+The first time you use this project, you need to create the Conda environment inside the Docker container.
 
+1. **Build the image (host machine):**
+
+    ```bash
+    docker compose build
+    ```
+
+2. **Start an interactive shell in the container (host machine):**
+
+    ```bash
+    docker compose run --rm app bash
+    ```
+
+    You should now be inside the container at the `/work` directory.
+
+3. **Initialize Conda (inside the container, first time only):**
+
+    ```bash
+    conda init bash
+    # then restart the shell, e.g.:
+    exec bash
+    ```
+
+    Accept the Conda terms of service when prompted.
+
+4. **Create the environment (inside the container, first time only):**
+
+    ```bash
+    conda env create -f environment.yml
+    ```
+
+5. **Activate the environment (inside the container):**
+
+    ```bash
+    conda activate workenv
+    ```
+
+6. **Run the full pipeline via the helper script (inside the container):**
+
+    ```bash
+    bash ./run.sh
+    ```
+
+For subsequent runs you only need to:
+
+- Start a shell in the container: `docker compose run --rm app bash`
+- Activate the environment: `conda activate workenv`
+- Run the pipeline: `bash ./run.sh`
 
 
 ### File Structure and Functions
