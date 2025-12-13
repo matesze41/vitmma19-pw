@@ -1,62 +1,22 @@
 # Deep Learning Class (VITMMA19) Project Work template
 
 
-## Submission Instructions
-
-### Project Levels
-
-**Basic Level (for signature)**
-*   Containerization
-*   Data acquisition and analysis
-*   Data preparation
-*   Baseline (reference) model
-*   Model development
-*   Basic evaluation
-
 ### Data Preparation
 
-**Important:** You must provide a script (or at least a precise description) of how to convert the raw database into a format that can be processed by the scripts.
-* The scripts should ideally download the data from there or process it directly from the current sharepoint location.
-* Or if you do partly manual preparation, then it is recommended to upload the prepared data format to a shared folder and access from there.
+Data was of varying quality in this project, ended up using a subset of all available data.
 
-[Describe the data preparation process here]
+Please download the subset from: 
+- On the official OneDrive repository navigate to bullflagdetector/GFTYRV
+- Download data.zip
 
-### Logging Requirements
+**After downloading the data extract the zip file and place its contents inside the project's data folder so that it looks like the following inside the running container:**
 
-The training process must produce a log file that captures the following essential information for grading:
+/work/data is the parent and inside is the following:
+- /work/data/AY1PC8
+- /work/data/GFTYRV
+- etc...
 
-1.  **Configuration**: Print the hyperparameters used (e.g., number of epochs, batch size, learning rate).
-2.  **Data Processing**: Confirm successful data loading and preprocessing steps.
-3.  **Model Architecture**: A summary of the model structure with the number of parameters (trainable and non-trainable).
-4.  **Training Progress**: Log the loss and accuracy (or other relevant metrics) for each epoch.
-5.  **Validation**: Log validation metrics at the end of each epoch or at specified intervals.
-6.  **Final Evaluation**: Result of the evaluation on the test set (e.g., final accuracy, MAE, F1-score, confusion matrix).
-
-The log file must be uploaded to `log/run.log` to the repository. The logs must be easy to understand and self explanatory. 
-Ensure that `src/utils.py` is used to configure the logger so that output is directed to stdout (which Docker captures).
-
-### Submission Checklist
-
-Before submitting your project, ensure you have completed the following steps.
-**Please note that the submission can only be accepted if these minimum requirements are met.**
-
-- [ ] **Project Information**: Filled out the "Project Information" section (Topic, Name, Extra Credit).
-- [ ] **Solution Description**: Provided a clear description of your solution, model, and methodology.
-- [ ] **Extra Credit**: If aiming for +1 mark, filled out the justification section.
-- [ ] **Data Preparation**: Included a script or precise description for data preparation.
-- [ ] **Dependencies**: Updated `requirements.txt` with all necessary packages and specific versions.
-- [ ] **Configuration**: Used `src/config.py` for hyperparameters and paths, contains at least the number of epochs configuration variable.
-- [ ] **Logging**:
-    - [ ] Log uploaded to `log/run.log`
-    - [ ] Log contains: Hyperparameters, Data preparation and loading confirmation, Model architecture, Training metrics (loss/acc per epoch), Validation metrics, Final evaluation results, Inference results.
-- [ ] **Docker**:
-    - [ ] `Dockerfile` is adapted to your project needs.
-    - [ ] Image builds successfully (`docker build -t dl-project .`).
-    - [ ] Container runs successfully with data mounted (`docker run ...`).
-    - [ ] The container executes the full pipeline (preprocessing, training, evaluation).
-- [ ] **Cleanup**:
-    - [ ] Removed unused files.
-    - [ ] **Deleted this "Submission Instructions" section from the README.**
+*Although not important to know for the scripts to work each of these folders contain csv files and json files with the labelling withouth any additional folder structure*
 
 ## Project Details
 
@@ -68,63 +28,78 @@ Before submitting your project, ensure you have completed the following steps.
 
 ### Solution Description
 
-Did not plan to integrate the model intoa  real time solution so the task is the classification of OHLC data segments. Into one of the flag groups.
+Did not plan to integrate the model into a realtime solution so the task is the classification of OHLC data segments. Into one of the flag groups.
+
+When using the inference script the user must provide a directory with csv files that each contains the ohlc data of a single flag. When running run.sh the script is currently set up to run inference on data in folder /work/inference_data. The output predictions are saved into a scv file in folder /work/src/predictions.
+
+Looked at the problem as a classic classification task with unbalanced dataset. Chose PR curve as main metric to balance this while looking at confusion matrices and other metrics. The loss function is CrossEntropy with weighted classes to also help the imbalanced classes.
+
+Performed analysis on the data and made visualizations accross several notebooks inside the notebook folder.
+
+I used conda environments for package managements so alongside the requirements.txt I have an environment.yml file. There is a detailed description about how to set up the project using this.
 
 ### Extra Credit Justification
 
-Although not aiming for +1, I implemented hyperparameter optimization on wandb. When Evaluating my models after training I used advanced metrics such as ROC-AUC curves and PR curve
+Although not aiming for +1, I implemented advanced data engineering pipeline that enabled my models to converge faster and utilize the statistical instruments which extended and transformed the original data. I also implemented hyperparameter optimization on wandb (although ended up not using the exact outputs, only observed them and drew conclusions from them). When Evaluating my models after training I used advanced metrics such as ROC-AUC curves and PR curve and also looked at the confusion matrices to fully understand model performance.
 
 ### Docker Instructions
 
-This project is containerized using Docker. Follow the instructions below to build and run the solution.
-[Adjust the commands that show how do build your container and run it with log output.]
+I set up docker compose to make the project binding and starting easier for users.
 
 #### Build
 
 Run the following command in the root directory of the repository to build the Docker image:
 
 ```bash
-docker build -t dl-project .
+docker compose build
 ```
 
 #### Run
 
-To run the solution, use the following command. You must mount your local data directory to `/app/data` inside the container.
+(Inside the container it should be at /work/data).
 
 **To capture the logs for submission (required), redirect the output to a file:**
 
 ```bash
-docker run -v /absolute/path/to/your/local/data:/app/data dl-project > log/run.log 2>&1
+docker compose up
 ```
 
-*   Replace `/absolute/path/to/your/local/data` with the actual path to your dataset on your host machine that meets the [Data preparation requirements](#data-preparation).
-*   The `> log/run.log 2>&1` part ensures that all output (standard output and errors) is saved to `log/run.log`.
+*   **To run training scripts you must save the training data to the data folder in the project root as detailed in an other chapter!** [Data preparation requirements](#data-preparation).
+*   logs will appear in /work/log/run.log when running the run.sh script, otherwise logs are only printed to the console
 *   The container is configured to run every step (data preprocessing, training, evaluation, inference).
+
+
+To run the sh script:
+
 
 
 ### File Structure and Functions
 
-[Update according to the final file structure.]
-
 The repository is structured as follows:
 
-- **`src/`**: Contains the source code for the machine learning pipeline.
-    - `01-data-preprocessing.py`: Scripts for loading, cleaning, and preprocessing the raw data.
-    - `02-training.py`: The main script for defining the model and executing the training loop.
-    - `03-evaluation.py`: Scripts for evaluating the trained model on test data and generating metrics.
-    - `04-inference.py`: Script for running the model on new, unseen data to generate predictions.
-    - `config.py`: Configuration file containing hyperparameters (e.g., epochs) and paths.
-    - `utils.py`: Helper functions and utilities used across different scripts.
-    - `baseline_model.py`: baseline model.
+- **`src/`** – Source code for the end‑to‑end pipeline.
+    - `01-data-preprocessing.py` – Loads labeled segments from JSON/CSV, performs feature engineering, builds train/test splits, and writes processed datasets to `data/export`.
+    - `train_model.py` – Uses `config.py` to train the `FlagPatternClassifier` with PyTorch Lightning, saves checkpoints and `eval_metadata.pt`, and writes training curves to `src/training_plots/`.
+    - `03-evaluation.py` – Loads the best checkpoint and test data, evaluates the CNN and the baseline detector, logs metrics, and saves confusion-matrix plots to `src/evaluation_plots/`.
+    - `04-inference.py` – Loads the trained model and runs inference on all CSV files in a given directory; saves predictions to `src/predictions/predictions.csv`.
+    - `baseline_model.py` – Rule‑based / classical baseline methods plus helpers used for comparison in evaluation.
+    - `config.py` – Central configuration for paths (e.g. `data/export`) and training hyperparameters (epochs, batch size, learning rate, etc.).
+    - `utils.py` – Shared utilities, including `setup_logger` used by all scripts for consistent logging to stdout (captured in `log/run.log` when using `run.sh`).
 
-- **`notebook/`**: Contains Jupyter notebooks for analysis and experimentation.
-    - `01-data-exploration.ipynb`: Notebook for initial exploratory data analysis (EDA) and visualization.
-    - `02-label-analysis.ipynb`: Notebook for analyzing the distribution and properties of the target labels.
+- **`notebook/`** – Jupyter notebooks for analysis and experimentation.
+    - `01-data-exploration.ipynb` – Initial exploratory data analysis and visualizations.
+    - `02-label-analysis.ipynb` – Analysis of label distributions and annotation quality.
+    - `03-data-preproc.ipynb`, `05-exp.ipynb`, `06-optimize.ipynb` – Prototyping of preprocessing, experiments, and hyperparameter tuning.
 
-- **`log/`**: Contains log files.
-    - `run.log`: Example log file showing the output of a successful training run.
+- **`data/`** – Input data used by the pipeline.
+    - Contains subfolders such as `AY1PC8/`, `GFTYRV/`, etc., each with raw OHLC CSV files and the corresponding Label Studio JSON annotations.
+    - The `data/export/` subfolder is created by `01-data-preprocessing.py` and holds derived CSV/HDF5 files and metadata for training, evaluation, and inference.
 
-- **Root Directory**:
-    - `Dockerfile`: Configuration file for building the Docker image with the necessary environment and dependencies.
-    - `requirements.txt`: List of Python dependencies required for the project.
-    - `README.md`: Project documentation and instructions.
+- **`log/`** – Runtime logs.
+    - `run.log` – Combined log output when running the full pipeline via `run.sh`.
+
+- **Root directory** – Project entry points and environment setup.
+    - `run.sh` – Convenience script that runs the full pipeline: preprocessing → training → evaluation → inference.
+    - `Dockerfile`, `compose.yml` – Docker setup for reproducible environments.
+    - `requirements.txt`, `environment.yml` – Python dependency specifications.
+    - `README.md` – This documentation file.

@@ -40,29 +40,3 @@ def setup_logger(name='pipeline', log_file='../log/run.log'):
     logger.addHandler(console_handler)
 
     return logger
-
-def strip_guid(filename: str) -> str:
-    """
-    Converts 'e2ab0dd4-FILENAME.csv' → 'FILENAME.csv'.
-    
-    Args:
-        filename: Filename potentially with GUID prefix
-        
-    Returns:
-        Filename without GUID prefix
-    """
-    base = os.path.basename(filename)
-    parts = base.split("-", 1)
-    if len(parts) == 2:
-        return parts[1]
-    return base
-
-
-def ensure_dir(directory: str):
-    """
-    Ensure a directory exists, creating it if necessary.
-    
-    Args:
-        directory: Path to directory
-    """
-    os.makedirs(directory, exist_ok=True)

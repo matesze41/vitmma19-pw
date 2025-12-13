@@ -23,7 +23,7 @@ import baseline_model
 from baseline_model import predict_from_segments_csv
 from train_model import FlagPatternClassifier  # reuse model definition
 
-logger = setup_logger()
+logger = setup_logger("model_evaluation")
 
 BASE_DATA_DIR = os.path.abspath("../data")
 EXPORT_DIR = os.path.join(BASE_DATA_DIR, "export")
@@ -61,6 +61,11 @@ def evaluate():
 
     logger.info(f"Loaded model from: {checkpoint_path}")
     logger.info(f"Device: {device}")
+
+    # Create evaluation plots directory in src folder
+    plots_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "evaluation_plots")
+    os.makedirs(plots_dir, exist_ok=True)
+    logger.info(f"Created evaluation plots directory: {plots_dir}")
 
     # ------------------------------------------------------------------
     # Dataset helper
@@ -153,7 +158,12 @@ def evaluate():
     disp = ConfusionMatrixDisplay(cm, display_labels=label_values)
     disp.plot(ax=ax, cmap="Greens", xticks_rotation=45)
     plt.tight_layout()
-    plt.show()
+    
+    # Save the plot instead of showing it
+    plot_path = os.path.join(plots_dir, "cnn_confusion_matrix.png")
+    plt.savefig(plot_path, dpi=300, bbox_inches='tight')
+    plt.close()
+    logger.info(f"Saved CNN confusion matrix plot: {plot_path}")
 
     # ------------------------------------------------------------------
     # Baseline evaluation
@@ -229,7 +239,12 @@ def evaluate():
     )
 
     plt.tight_layout()
-    plt.show()
+    
+    # Save the plot instead of showing it
+    plot_path = os.path.join(plots_dir, "model_comparison_confusion_matrices.png")
+    plt.savefig(plot_path, dpi=300, bbox_inches='tight')
+    plt.close()
+    logger.info(f"Saved model comparison plot: {plot_path}")
 
 if __name__ == "__main__":
     evaluate()

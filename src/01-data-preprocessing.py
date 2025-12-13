@@ -15,7 +15,7 @@ from sklearn.model_selection import train_test_split
 from typing import List
 import pandas as pd
 
-logger = setup_logger()
+logger = setup_logger("data_preprocessing")
 BASE_DATA_DIR = os.path.abspath("../data")
 EXPORT_DIR = os.path.join(BASE_DATA_DIR, "export")
 VALUES_CSV = os.path.join(EXPORT_DIR, "segments_values.csv")

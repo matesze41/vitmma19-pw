@@ -32,19 +32,19 @@ from pytorch_lightning import seed_everything
 sys.path.insert(0, os.path.abspath('..'))
 from utils import setup_logger
 
-logger = setup_logger(__name__)
+logger = setup_logger("model_training")
 
-BASE_DATA_DIR = os.path.abspath("../data")
-EXPORT_DIR = os.path.join(BASE_DATA_DIR, "export")
-EXPORT_DIR = os.path.join(BASE_DATA_DIR, "export")
-PREPROC_CSV = os.path.join(EXPORT_DIR, "segments_preproc_24.csv")
-SEED = 1
-# Training hyperparameters
-MAX_EPOCHS = 50
-BATCH_SIZE = 12
-LEARNING_RATE = 1e-3
-WEIGHT_DECAY = 1e-4
-PRIMARY_METRIC = 'pr_auc'
+
+# Use config.py for paths and hyperparameters
+BASE_DATA_DIR = os.path.abspath(config.BASE_DATA_DIR)
+EXPORT_DIR = os.path.abspath(config.EXPORT_DIR)
+PREPROC_CSV = os.path.abspath(config.PREPROC_CSV)
+SEED = config.SEED
+MAX_EPOCHS = config.MAX_EPOCHS
+BATCH_SIZE = config.BATCH_SIZE
+LEARNING_RATE = config.LEARNING_RATE
+WEIGHT_DECAY = config.WEIGHT_DECAY
+PRIMARY_METRIC = config.PRIMARY_METRIC
 
 # Metric display names and whether higher is better
 METRIC_CONFIG = {
@@ -429,6 +429,11 @@ def train():
     logger.info(f"Best checkpoint saved: {checkpoint_callback.best_model_path}")
     logger.info(f"Best {METRIC_CONFIG[PRIMARY_METRIC]['name']}: {checkpoint_callback.best_model_score:.4f}")
     
+    # Create training-specific plots directory in src folder
+    plots_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "training_plots")
+    os.makedirs(plots_dir, exist_ok=True)
+    logger.info(f"Created training plots directory: {plots_dir}")
+    
     # Plot training history from PyTorch Lightning logs
     metrics_df = pd.read_csv(f"{trainer.logger.log_dir}/metrics.csv")
 
@@ -464,7 +469,12 @@ def train():
     ax2.grid(True, alpha=0.3)
 
     plt.tight_layout()
-    plt.show()
+    
+    # Save the plot instead of showing it
+    plot_path = os.path.join(plots_dir, "training_curves.png")
+    plt.savefig(plot_path, dpi=300, bbox_inches='tight')
+    plt.close()
+    logger.info(f"Saved training curves plot: {plot_path}")
     
     # Save metadata needed for evaluation
     eval_metadata = {

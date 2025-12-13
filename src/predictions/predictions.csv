@@ -1,0 +1,4 @@
+filename,predicted_label,predicted_class_idx,prob_Bearish Normal,prob_Bearish Pennant,prob_Bearish Wedge,prob_Bullish Normal,prob_Bullish Pennant,prob_Bullish Wedge
+EURUSD_1H_001.csv,Bullish Wedge,5,0.00038172406,0.0018899364,0.006005317,0.2101202,0.12364145,0.65796125
+EURUSD_1H_002.csv,Bearish Pennant,1,0.048080955,0.5886665,0.3008214,0.0114501575,0.02597176,0.025009245
+EURUSD_1H_003.csv,Bearish Normal,0,0.3605932,0.34087843,0.29248708,0.0024533807,0.0025527405,0.0010352378
