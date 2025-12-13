@@ -36,7 +36,7 @@ Please download the subset from:
 
 - **Selected Topic**: Bull-flag detector
 - **Student Name**: Máté Szendrey (GFTYRV)
-- **Aiming for +1 Mark**: No
+- **Aiming for +1 Mark**: Maybe?
 
 ### Solution Description
 
@@ -52,7 +52,7 @@ I used conda environments for package managements so alongside the requirements.
 
 ### Extra Credit Justification
 
-Although not aiming for +1, I implemented advanced data engineering pipeline that enabled my models to converge faster and utilize the statistical instruments which extended and transformed the original data. I also implemented hyperparameter optimization on wandb (although ended up not using the exact outputs, only observed them and drew conclusions from them). When Evaluating my models after training I used advanced metrics such as ROC-AUC curves and PR curve and also looked at the confusion matrices to fully understand model performance.
+Although not necessarily aiming for +1, I implemented advanced data engineering pipeline that enabled my models to converge faster and utilize the statistical instruments which extended and transformed the original data. I also implemented hyperparameter optimization on wandb (although ended up not using the exact outputs, only observed them and drew conclusions from them). When Evaluating my models after training I used advanced metrics such as ROC-AUC curves and PR curve and also looked at the confusion matrices to fully understand model performance.
 
 ### Docker Instructions
 
