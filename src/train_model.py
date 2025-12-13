@@ -36,6 +36,7 @@ logger = setup_logger(__name__)
 
 BASE_DATA_DIR = os.path.abspath("../data")
 EXPORT_DIR = os.path.join(BASE_DATA_DIR, "export")
+EXPORT_DIR = os.path.join(BASE_DATA_DIR, "export")
 PREPROC_CSV = os.path.join(EXPORT_DIR, "segments_preproc_24.csv")
 SEED = 1
 # Training hyperparameters

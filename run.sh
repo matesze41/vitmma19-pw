@@ -15,18 +15,21 @@ if [ ! -d "src" ] || [ ! -f "src/config.py" ]; then
     exit 1
 fi
 
+# Change to src directory
+cd src
+
 # Create log directory
-mkdir -p log
+mkdir -p ../log
 
 # Clear previous log
-> log/run.log
+> ../log/run.log
 
 echo "Step 1/4: Data Preprocessing"
 echo "------------------------------------------------------------------------"
 echo "Extracting segments from Label Studio JSON..."
 echo "Engineering features and creating train/test split..."
 echo ""
-python -u src/01-data-preprocessing.py 2>&1 | tee -a log/run.log
+python -u 01-data-preprocessing.py 2>&1 | tee -a ../log/run.log
 echo ""
 echo "✓ Preprocessing complete"
 echo "  Output: data/export/segments_preproc_24.csv (train)"
@@ -38,7 +41,7 @@ echo "------------------------------------------------------------------------"
 echo "Training CNN model with PyTorch Lightning..."
 echo "This may take 10-30 minutes depending on data size and hardware..."
 echo ""
-python -u src/02-training.py 2>&1 | tee -a log/run.log
+python -u train_model.py 2>&1 | tee -a ../log/run.log
 echo ""
 echo "✓ Training complete"
 echo "  Output: Best model checkpoint saved"
@@ -50,20 +53,20 @@ echo "------------------------------------------------------------------------"
 echo "Evaluating on test set and comparing with baseline..."
 echo "Generating visualizations..."
 echo ""
-python -u src/03-evaluation.py 2>&1 | tee -a log/run.log
+python -u 03-evaluation.py 2>&1 | tee -a ../log/run.log
 echo ""
 echo "✓ Evaluation complete"
-echo "  Output: src/03_evaluation/evaluation_metrics.txt"
-echo "          src/03_evaluation/figures/*.png"
+echo "  Output: 03_evaluation/evaluation_metrics.txt"
+echo "          03_evaluation/figures/*.png"
 echo ""
 
 echo "Step 4/4: Inference Example"
 echo "------------------------------------------------------------------------"
 echo "Running inference on test set as demonstration..."
 echo ""
-python -u src/04-inference.py \
-    --input data/export/segments_preproc_24_test.csv \
-    --output test_predictions.csv 2>&1 | tee -a log/run.log
+python -u 04-inference.py \
+    --input ../data/export/segments_preproc_24_test.csv \
+    --output ../test_predictions.csv 2>&1 | tee -a ../log/run.log
 echo ""
 echo "✓ Inference complete"
 echo "  Output: test_predictions.csv"
@@ -82,6 +85,9 @@ echo "  • Example predictions: test_predictions.csv"
 echo ""
 echo "To view evaluation results:"
 echo "  cat src/03_evaluation/evaluation_metrics.txt"
+echo ""
+echo "To view logs:"
+echo "  tail -n 100 log/run.log"
 echo ""
 echo "To view logs:"
 echo "  tail -n 100 log/run.log"
