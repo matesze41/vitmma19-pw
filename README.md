@@ -3,7 +3,7 @@
 
 ### Data Preparation
 
-Data was of varying quality in this project, ended up using a subset of all available data.
+Data was of varying quality in this project, ended up using a subset of all available data. Data preparation is mainly done by a python script but pasting the data in the correct folder is a manual process.
 
 Please download the subset from: 
 - On the official OneDrive repository navigate to bullflagdetector/GFTYRV
@@ -44,9 +44,11 @@ Did not plan to integrate the model into a realtime solution so the task is the 
 
 When using the inference script the user must provide a directory with csv files that each contains the ohlc data of a single flag. When running run.sh the script is currently set up to run inference on data in folder /work/inference_data. The output predictions are saved into a scv file in folder /work/src/predictions.
 
-Looked at the problem as a classic classification task with unbalanced dataset. Chose PR curve as main metric to balance this while looking at confusion matrices and other metrics. The loss function is CrossEntropy with weighted classes to also help the imbalanced classes.
-
 Performed analysis on the data and made visualizations accross several notebooks inside the notebook folder.
+
+Looked at the problem as a classic classification task with unbalanced dataset. Chose PR curve as main metric to balance this while looking at confusion matrices and other metrics. The loss function is CrossEntropy with weighted classes to also help the imbalanced classes. I started out from a 2 layer cnn and incremented from there, added regularization to avoid overfitting to train data (there is not too much of it).
+
+I built a one-dimensional convolutional neural network designed to classify short multivariate time-series segments. It takes sequences with eight input features and processes them through three stacked convolutional blocks that progressively increase the number of channels from 32 to 128. Each block consists of a 1D convolution with a small kernel to capture local temporal patterns, followed by batch normalization, ReLU activation, dropout for regularization, and max pooling. After the convolutional stages, the model applies adaptive average pooling to aggregate information across the entire sequence into a fixed-length representation. This representation is passed through a fully connected classifier with two hidden layers and additional dropout, ending in a six-class output layer with a softmax applied implicitly via the cross-entropy loss. Overall, the model has about 43k trainable parameters and is optimized for efficient learning of discriminative temporal patterns while controlling overfitting through normalization and dropout.
 
 I used conda environments for package managements so alongside the requirements.txt I have an environment.yml file. There is a detailed description about how to set up the project using this.
 
