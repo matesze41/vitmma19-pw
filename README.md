@@ -11,6 +11,8 @@ Please download the subset from:
 
 **After downloading the data extract the zip file and place its contents inside the project's data folder so that it looks like the following inside the running container:**
 
+*No need to copy it inside the running container you can just put it at the correct directory before starting the container, container will mount to the whole project folder because I used it for developement also*
+
 /work/data is the parent and inside is the following:
 - /work/data/AY1PC8
 - /work/data/GFTYRV
@@ -69,6 +71,8 @@ docker compose up
 *   The container is configured to run every step (data preprocessing, training, evaluation, inference).
 
 ### First-time Container Setup
+
+Do the following steps after pasting the data inside the data folder specified in [Data preparation requirements](#data-preparation).
 
 The first time you use this project, you need to create the Conda environment inside the Docker container.
 
